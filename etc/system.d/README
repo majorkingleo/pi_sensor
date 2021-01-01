@@ -1,0 +1,6 @@
+cp into /etc/systemd/system
+systemctl enable pigpiod
+systemctl start pigpiod
+systemctl start pi_sensor
+sysctl enable pi_sensor
+
