@@ -1,0 +1,5 @@
+# this is my conrtab entry that automatically
+# syncs the clock after reboot and once a day
+
+@reboot /home/pi/pi_sensor/sync_clock/sync_date_and_time.sh
+  25 20   *  *   * /home/pi/pi_sensor/sync_clock/sync_date_and_time.sh
