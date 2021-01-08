@@ -18,22 +18,7 @@ using namespace Tools;
 void usage( const std::string & prog )
 {
   std::cerr << "usage: "
-			<< prog << " PATH -replace WHAT WITH [-doit]\n";
-  std::cerr << "  eg: " 
-			<< prog 
-			<< " . -replace \"sdbm/\" # this finds all includes with sdbm in path\n"
-			<< "                      # and removes than in preview mode\n";
-  std::cerr << "  eg: " 
-			<< prog
-			<< " . -replace \"sdbm/\" -doit # this finds all includes with sdbm in path\n"
-			<< "                            # and removes realy\n";
-  std::cerr << "  eg: " 
-			<< prog
-			<< " . -replace \"sdbm/\" \"foobar\" -doit # this finds all includes with sdbm in path\n"
-			<< "                                       # and removes them with foobar\n";
-
-  std::cerr << "usage: "
-  			<< prog << " PATH -remove-versid [-doit]\n";
+			<< prog << " temperaturen.csv\n";
 }
 
 class Co : public ColoredOutput
@@ -84,7 +69,7 @@ int main( int argc, char **argv )
 
   Arg::FlagOption o_version( "v" );
   o_version.addName( "version" );
-  o_version.setDescription( "Show replace version number" );
+  o_version.setDescription( format( "Show %s version number", PACKAGE_NAME ) );
   oc_info.addOptionR( &o_version );
 
 

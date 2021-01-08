@@ -13,3 +13,6 @@ install-sh
 missing
 Makefile
 collectdata
+.cproject
+.project
+.settings
