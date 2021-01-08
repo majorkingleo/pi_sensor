@@ -1,0 +1,15 @@
+COPYING
+INSTALL
+configure
+Makefile.in
+aclocal.m4
+compile
+config.log
+config.status
+ar-lib
+autom4te.cache
+depcomp
+install-sh
+missing
+Makefile
+collectdata

@@ -33,7 +33,6 @@ tools_libtools_a_SOURCES= \
 cpputils_cpputilsshared_libcpputilsshared_a_SOURCES= \
 		cpputils/cpputilsshared/backtrace.cc \
 		cpputils/cpputilsshared/cppdir.cc \
-		cpputils/cpputilsshared/cpp_util.cc \
 		cpputils/cpputilsshared/leoini.cc \
 		cpputils/cpputilsshared/logtool2.cc \
 		cpputils/cpputilsshared/string_utils.cc \
