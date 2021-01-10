@@ -267,7 +267,15 @@ long ThemeTextField::onPaint(FXObject*,FXSelector,void* ptr)
   
   // Draw caret
   if(flags&FLAG_CARET){
+#if FOX_MAJOR <= 1 and FOX_MINOR <= 6
+	  int xx=coord(cursor)-1;
+	  dc.setForeground(cursorColor);
+	  dc.fillRectangle(xx,padtop+border,1,height-padbottom-padtop-(border<<1));
+	  dc.fillRectangle(xx-2,padtop+border,5,1);
+	  dc.fillRectangle(xx-2,height-border-padbottom-1,5,1);
+#else
 	  paintCursor(dc);
+#endif
   }
   return 1;
 }
