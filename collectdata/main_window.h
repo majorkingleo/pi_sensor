@@ -9,6 +9,7 @@
 #define MAIN_WINDOW_H_
 
 #include <fx.h>
+#include <string>
 
 class MainWindow : public FXMainWindow
 {
@@ -20,8 +21,23 @@ protected:
 	FXTabBook*         tabbook;
 	FXTabItem*         tab1;
 	FXHorizontalFrame* contents;
-	FXHorizontalFrame* contents_currentdata;
+	FXVerticalFrame*   contents_currentdata;
 	FXLabel*		   clock;
+	FXLabel*		   dataset_date_and_time;
+
+	FXDataTarget       degree_inside_target;
+	FXint	           degree_inside;
+
+	FXDataTarget       humidity_inside_target;
+	FXint	           humidity_inside;
+
+	FXDataTarget       degree_outside_target;
+	FXint	           degree_outside;
+
+	FXDataTarget       humidity_outside_target;
+	FXint	           humidity_outside;
+
+	const std::string DATA_FILE_NAME;
 
 	MainWindow() {}
 
@@ -29,6 +45,7 @@ public:
 	enum {
 		ID_PANEL = FXMainWindow::ID_LAST,
 		ID_CLOCK_TIMER,
+		ID_DATA_TIMER,
 	};
 
 public:
@@ -38,6 +55,10 @@ public:
 	virtual void create();
 
 	long onClockTimeout(FXObject*,FXSelector,void*);
+	long onDataTimeout(FXObject*,FXSelector,void*);
+
+protected:
+	void createDataFields( FXComposite *fdata, const char *title, FXDataTarget *degree_target,  FXDataTarget *humidity_target );
 };
 
 
