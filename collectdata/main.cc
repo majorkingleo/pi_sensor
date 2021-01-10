@@ -12,6 +12,7 @@
 #include "file_option.h"
 #include "OutDebug.h"
 #include "colored_output.h"
+#include "main_window.h"
 
 using namespace Tools;
 
@@ -92,7 +93,7 @@ int main( int argc, char **argv )
 
   const unsigned int console_width = 80;
 
-  if( !arg.parse() || argc <= 1 )
+  if( !arg.parse() )
     {
       if( o_version.getState() )
       {
@@ -149,6 +150,24 @@ int main( int argc, char **argv )
 	  return 1;
   }
 #endif
+
+
+  {
+	  // Make application
+	  FXApp application("CollectData","pi_sensor");
+
+	  // Open display; this reads registry
+	  application.init(argc,argv);
+
+	  // Build a window
+	  new MainWindow(&application);
+
+	  // Create app
+	  application.create();
+
+	  // Run
+	  return application.run();
+  }
 
   } catch( std::exception & err ) {
 	  std::cerr << "error: " << err.what() << std::endl;

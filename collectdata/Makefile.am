@@ -4,13 +4,16 @@ collectdata_SOURCES=\
 		file_option.cc\
 		main.cc\
 		OutDebug.cc\
-		colored_output.cc
+		colored_output.cc \
+		main_window.cc
 
 AM_CPPFLAGS = -I$(top_srcdir)/tools \
 	-I$(top_srcdir)/cpputils/cpputilsshared  \
 	-I$(top_srcdir)/cpputils/cpputilsshared/cpputilsformat \
 	-DNOWAMAS \
-	-std=c++11
+	-std=c++11 \
+	`pkgconf --cflags fox` \
+	-pthread
 
 noinst_LIBRARIES=tools/libtools.a \
 	cpputils/cpputilsshared/libcpputilsshared.a \
@@ -45,3 +48,5 @@ cpputils_cpputilsshared_cpputilsformat_libcpputilsformat_a_SOURCES= \
 	cpputils/cpputilsshared/cpputilsformat/format2.cc
 
 collectdata_LDADD = tools/libtools.a cpputils/cpputilsshared/libcpputilsshared.a cpputils/cpputilsshared/cpputilsformat/libcpputilsformat.a
+
+collectdata_LDFLAGS=`pkgconf --libs fox` -pthread
