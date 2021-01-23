@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Sensor Montior
+Comment=Start Sensor Montitor
+NoDisplay=false
+X-GNOME-Autostart-Delay=10
+Exec=/home/pi/pi_sensor/monitor.sh
