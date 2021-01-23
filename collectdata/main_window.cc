@@ -101,10 +101,17 @@ MainWindow::MainWindow(FXApp *a)
 
 	createDataFields( fdata, "Outside", &degree_outside_target, &humidity_outside_target );
 
+
+
+	// First item is a list
+	tab2=new ThemeTabItem(tabbook,"&Min/Max last 24h",NULL);
+
+	contents_min_max = new FXVerticalFrame(tabbook,FRAME_RAISED);
 }
 
 void MainWindow::createDataFields( FXComposite *fdata, const char *title, FXDataTarget *degree_target,  FXDataTarget *humidity_target )
 {
+#if 0
 	FXComposite *ftitle = new FXGroupBox(fdata, title, FRAME_RIDGE|LAYOUT_FILL_X|LAYOUT_FILL_Y);
 	FXComposite *f = new FXHorizontalFrame(ftitle, LAYOUT_FILL_Y);
 	FX7Segment *seven=new FX7Segment(f,FXString::null,SEVENSEGMENT_NORMAL|JUSTIFY_RIGHT|LAYOUT_CENTER_Y|LAYOUT_FILL_ROW|LAYOUT_FILL_X);
@@ -115,8 +122,40 @@ void MainWindow::createDataFields( FXComposite *fdata, const char *title, FXData
 	bar->setTotal(50);
 	bar->setBarSize( 50 );
 
-	FXProgressBar *humidity_bar = new FXProgressBar(f,humidity_target,FXDataTarget::ID_VALUE,PROGRESSBAR_DIAL| PROGRESSBAR_PERCENTAGE |LAYOUT_FILL_Y);
+	FXComposite *f_humidity = new FXVerticalFrame(f, LAYOUT_FILL_Y);
+
+	FXProgressBar *humidity_bar = new FXProgressBar(f_humidity,humidity_target,FXDataTarget::ID_VALUE,PROGRESSBAR_DIAL| PROGRESSBAR_PERCENTAGE |LAYOUT_FILL_Y);
 	humidity_bar->setTotal(100);
+
+	FXComposite *f2 = new FXHorizontalFrame(f_humidity, LAYOUT_FILL_Y | LAYOUT_SIDE_BOTTOM );
+	FXTextField *humidity_value = new FXTextField( f2, 5, humidity_target, FXDataTarget::ID_VALUE, FRAME_SUNKEN  | TEXTFIELD_READONLY );
+	humidity_value->setJustify( JUSTIFY_RIGHT );
+	new FXLabel( f2, "%" );
+#else
+	FXComposite *ftitle = new FXGroupBox(fdata, title, FRAME_RIDGE|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+	FXMatrix *f = new FXMatrix( ftitle, 2, MATRIX_BY_COLUMNS );
+
+	FXProgressBar *bar = new FXProgressBar(f,degree_target,FXDataTarget::ID_VALUE,PROGRESSBAR_VERTICAL|PROGRESSBAR_NORMAL|LAYOUT_CENTER_X|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+	bar->setTotal(50);
+	bar->setBarSize( 50 );
+
+	FXProgressBar *humidity_bar = new FXProgressBar(f,humidity_target,FXDataTarget::ID_VALUE,PROGRESSBAR_DIAL| PROGRESSBAR_PERCENTAGE |LAYOUT_CENTER_X|LAYOUT_FILL_X);
+	humidity_bar->setTotal(100);
+	humidity_bar->setBarSize(100);
+
+
+	FXComposite *f1 = new FXHorizontalFrame(f);
+	FXTextField *degree_value = new FXTextField( f1, 5, degree_target, FXDataTarget::ID_VALUE, FRAME_SUNKEN  | TEXTFIELD_READONLY );
+	degree_value->setJustify( JUSTIFY_RIGHT );
+	new FXLabel( f1, "°" );
+
+
+	FXComposite *f2 = new FXHorizontalFrame(f);
+	FXTextField *humidity_value = new FXTextField( f2, 5, humidity_target, FXDataTarget::ID_VALUE, FRAME_SUNKEN  | TEXTFIELD_READONLY );
+	humidity_value->setJustify( JUSTIFY_RIGHT );
+	new FXLabel( f2, "%" );
+
+#endif
 }
 
 MainWindow::~MainWindow()

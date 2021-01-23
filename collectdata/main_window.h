@@ -20,8 +20,10 @@ protected:
 	FXMenuBar*         menubar;
 	FXTabBook*         tabbook;
 	FXTabItem*         tab1;
+	FXTabItem*         tab2;
 	FXHorizontalFrame* contents;
 	FXVerticalFrame*   contents_currentdata;
+	FXVerticalFrame*   contents_min_max;
 	FXLabel*		   clock;
 	FXLabel*		   dataset_date_and_time;
 
