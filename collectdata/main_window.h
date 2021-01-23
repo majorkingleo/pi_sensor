@@ -45,7 +45,7 @@ protected:
 
 	time_t			   lastDataRecord;
 
-	const std::string DATA_FILE_NAME;
+	std::string 	   DATA_FILE_NAME;
 
 	MainWindow() {}
 
@@ -61,6 +61,10 @@ public:
 	virtual ~MainWindow();
 
 	virtual void create();
+
+	void setDataFileName( const std::string & file_name ) {
+		DATA_FILE_NAME = file_name;
+	}
 
 	long onClockTimeout(FXObject*,FXSelector,void*);
 	long onDataTimeout(FXObject*,FXSelector,void*);

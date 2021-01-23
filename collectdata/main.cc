@@ -111,18 +111,8 @@ int main( int argc, char **argv )
   {
 	  Tools::x_debug = new OutDebug();
   }
+
 #if 0
-  if( !o_path.isSet() )
-  {
-	  usage(argv[0]);
-	  std::cout << arg.getHelp(5,20,30, console_width ) << std::endl;
-
-	  std::cout << "\n\n"
-			  	<< co.color_output( ColoredOutput::BRIGHT_RED, "PATH is missing")
-			  	<< "\n";
-
-	  return 13;
-  }
 
   if( !o_replace.isSet() &&
 	  !o_versid_remove.isSet() &&
@@ -155,7 +145,11 @@ int main( int argc, char **argv )
 	  application.init(argc,argv);
 
 	  // Build a window
-	  new MainWindow(&application);
+	  MainWindow *main = new MainWindow(&application);
+
+	  if( o_path.isSet() ) {
+		  main->setDataFileName( *o_path.getValues()->begin() );
+	  }
 
 	  // Create app
 	  application.create();
