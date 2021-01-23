@@ -22,8 +22,6 @@ public:
 		FIELD_HUMIDITY_OUTSIDE,
 		MAX_FIELDS
 	};
-
-
 };
 
 

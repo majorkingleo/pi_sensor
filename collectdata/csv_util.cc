@@ -34,6 +34,20 @@ bool CSVUtil::moveToStartOfLine(std::ifstream& fs) const
     return false;
 }
 
+bool CSVUtil::moveToEndOfLine(std::ifstream& fs) const
+{
+	fs.clear();
+	while( !fs.eof() )
+	{
+		if( fs.get() == '\n' )
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 std::string CSVUtil::getLastLineInFile(std::ifstream& fs) const
 {
     // Go to the last character before EOF
@@ -41,7 +55,7 @@ std::string CSVUtil::getLastLineInFile(std::ifstream& fs) const
     if (!moveToStartOfLine(fs))
         return "";
 
-    std::string lastline = "";
+    std::string lastline;
     getline(fs, lastline);
     return lastline;
 }
@@ -54,4 +68,135 @@ std::vector<std::string> CSVUtil::getLastLine()
 	DEBUG( format( "line: %s", line ) );
 
 	return split_simple( line, ";" );
+}
+
+std::string CSVUtil::getPrevLineInFile(std::ifstream& fs) const
+{
+    if (!moveToStartOfLine(fs))
+        return "";
+
+    std::string line;
+    getline(fs, line);
+    return line;
+}
+
+
+std::vector<std::string> CSVUtil::getPrevLine()
+{
+	std::string line = getPrevLineInFile( in );
+	return split_simple( line, ";" );
+}
+
+std::vector<std::string> CSVUtil::getLine()
+{
+	std::string line;
+	getline(in, line);
+	return split_simple( line, ";" );
+}
+
+CSVUtil::iterator CSVUtil::begin()
+{
+	return iterator( this, 0 );
+}
+
+CSVUtil::iterator CSVUtil::end()
+{
+	in.seekg(0, std::ios_base::end);
+	std::fstream::pos_type pos = in.tellg();
+	return iterator( this, pos );
+}
+
+CSVUtil::iterator CSVUtil::iterator::operator++( int amount )
+{
+	if( amount == 0 ) {
+		amount = 1;
+	}
+
+	iterator ret(*this);
+
+	std::fstream::pos_type p = pos + 1l;
+
+	parent->setCurrentPos(p);
+
+	for( int n = 0; n < amount; n++ )
+	{
+		if( !parent->moveToEndOfLine(parent->in) ) {
+			DEBUG( "moveToEndOfLine failed" );
+			break;
+		}
+	}
+
+	pos = parent->getCurrentPos();
+
+	return ret;
+}
+
+CSVUtil::iterator & CSVUtil::iterator::operator++()
+{
+	std::fstream::pos_type p = pos + 1l;
+
+	parent->setCurrentPos(p);
+
+	if( !parent->moveToEndOfLine(parent->in) ) {
+		DEBUG( "moveToEndOfLine failed" );
+	}
+
+	pos = parent->getCurrentPos();
+
+	return *this;
+}
+
+CSVUtil::iterator CSVUtil::iterator::operator--( int amount )
+{
+	if( amount == 0 ) {
+		amount = 1;
+	}
+
+	iterator ret(*this);
+
+	std::fstream::pos_type p = pos - 1l;
+
+	if( pos == 0 ) {
+		p = 0;
+	}
+
+	parent->setCurrentPos(p);
+
+	for( int n = 0; n < amount; n++ )
+	{
+		DEBUG( format("n: %d", n ) );
+		if( !parent->moveToStartOfLine(parent->in) ) {
+			DEBUG( "moveToEndOfLine failed" );
+			break;
+		}
+	}
+
+	pos = parent->getCurrentPos();
+
+	return ret;
+}
+
+CSVUtil::iterator & CSVUtil::iterator::operator--()
+{
+	std::fstream::pos_type p = pos - 1l;
+
+	if( pos == 0 ) {
+		p = 0;
+	}
+
+	parent->setCurrentPos(p);
+
+	if( !parent->moveToStartOfLine(parent->in) ) {
+		DEBUG( "moveToStartOfLine failed" );
+	}
+
+	pos = parent->getCurrentPos();
+
+	return *this;
+}
+
+std::vector<std::string> CSVUtil::iterator::operator*()
+{
+	parent->setCurrentPos(pos);
+	return parent->getLine();
 }

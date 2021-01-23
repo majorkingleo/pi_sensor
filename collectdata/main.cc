@@ -13,6 +13,7 @@
 #include "OutDebug.h"
 #include "colored_output.h"
 #include "main_window.h"
+#include "csv_util.h"
 
 using namespace Tools;
 
@@ -36,10 +37,42 @@ public:
 	}
 };
 
+void printLast( const std::string & days, const std::string & file )
+{
+	int nDays = s2x<int>(days,0);
+}
+
+void printAllRecords( const std::string & file )
+{
+	CSVUtil csv_util( file );
+
+	if( !csv_util ) {
+		throw REPORT_EXCEPTION( format( "Cannot open file %s ", file) );
+	}
+
+	std::vector<std::string> record = csv_util.getLastLine();
+
+	int count = 0;
+
+	for( auto it = csv_util.begin(); it != csv_util.end(); it++ )
+	{
+		std::cout << format( "%04d:", ++count );
+
+		for( std::string & rec : *it )
+		{
+			std::cout << rec << ";";
+		}
+
+		std::cout << std::endl;
+	}
+}
+
 
 int main( int argc, char **argv )
 {
   Co co;
+
+  std::string data_file_name = "temperatures.csv";
 
   try {
 
@@ -80,10 +113,28 @@ int main( int argc, char **argv )
   o_path.setMinValues(1);
   o_path.setRequired(true);
 
-  Arg::FlagOption o_debug("debug");
+  Arg::FlagOption o_debug("d");
+  o_debug.addName("debug");
   o_debug.setDescription("print debugging messages");
   o_debug.setRequired(false);
   arg.addOptionR( &o_debug );
+
+  Arg::OptionChain oc_print_stuff;
+  arg.addChainR(&oc_print_stuff);
+
+  Arg::IntOption o_print_last("l");
+  oc_print_stuff.addOptionR(&o_print_last);
+  o_print_last.addName("last");
+  o_print_last.setDescription("print last %d days records");
+  o_print_last.setMaxValues(1);
+  o_print_last.setMinValues(1);
+  o_print_last.setRequired(false);
+
+  Arg::FlagOption o_print_all("a");
+  oc_print_stuff.addOptionR(&o_print_all);
+  o_print_all.addName("all");
+  o_print_all.setDescription("print all records");
+  o_print_all.setRequired(false);
 
   const unsigned int console_width = 80;
 
@@ -135,6 +186,21 @@ int main( int argc, char **argv )
   }
 #endif
 
+  if( o_path.isSet() ) {
+	  data_file_name = *o_path.getValues()->begin();
+  }
+
+  if( o_print_last.isSet() )
+  {
+	  printLast( *o_print_last.getValues()->begin(), data_file_name );
+	  return 0;
+  }
+
+  if( o_print_all.isSet() )
+  {
+	  printAllRecords( data_file_name );
+	  return 0;
+  }
 
   {
 	  // Make application
