@@ -37,6 +37,12 @@ protected:
 	FXDataTarget       humidity_outside_target;
 	FXint	           humidity_outside;
 
+	FXStatusBar*       statusbar;
+	FXColor			   status_line_error_color;
+	FXColor			   status_line_normal_color;
+
+	time_t			   lastDataRecord;
+
 	const std::string DATA_FILE_NAME;
 
 	MainWindow() {}
@@ -59,6 +65,9 @@ public:
 
 protected:
 	void createDataFields( FXComposite *fdata, const char *title, FXDataTarget *degree_target,  FXDataTarget *humidity_target );
+	void setStatusOk();
+	void setStatusNotOk( const std::string & message );
+	time_t getDateAndTime( const std::string & date_time_str );
 };
 
 

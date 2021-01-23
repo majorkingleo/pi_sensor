@@ -11,6 +11,7 @@
 #include <iostream>
 #include "DataRecord.h"
 #include <string_utils.h>
+#include <debug.h>
 
 using namespace Tools;
 
@@ -27,10 +28,17 @@ MainWindow::MainWindow(FXApp *a)
 	degree_inside(0),
 	humidity_inside(0),
 	degree_outside(0),
-	humidity_outside(0)
+	humidity_outside(0),
+	lastDataRecord(0)
 {
 	// Tooltip
 	new FXToolTip(getApp());
+
+	// Status bar
+	statusbar=new FXStatusBar(this,LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X|STATUSBAR_WITH_DRAGCORNER);
+
+	status_line_error_color = FXRGB( 255, 0, 40 );
+	status_line_normal_color = statusbar->getStatusLine()->getTextColor();
 
 	// Menubar
 	menubar=new FXMenuBar(this,LAYOUT_SIDE_TOP|LAYOUT_FILL_X|FRAME_RAISED);
@@ -164,6 +172,8 @@ long MainWindow::onDataTimeout(FXObject*,FXSelector,void*)
 		std::string date_and_time = record[DataRecord::FIELD_DATE] + " " + record[DataRecord::FIELD_TIME];
 		dataset_date_and_time->setText( date_and_time.c_str() );
 
+		lastDataRecord = getDateAndTime( date_and_time );
+
 		// degree
 		degree_inside = s2x<double>(record[DataRecord::FIELD_DEGREE_INSIDE], 0.0);
 		degree_inside += delta;
@@ -180,11 +190,68 @@ long MainWindow::onDataTimeout(FXObject*,FXSelector,void*)
 		// humidity
 		humidity_outside = s2x<double>(record[DataRecord::FIELD_HUMIDITY_OUTSIDE], 0.0);
 		humidity_outside += delta;
+
+		time_t now = time(0);
+
+		if( lastDataRecord == 0 ) {
+
+			setStatusNotOk( "Cannot read last dataset entry" );
+
+		} else if( lastDataRecord < (now - 60*10) ) {
+
+			long age_in_seconds = (now - lastDataRecord);
+
+			if( age_in_seconds > 60 ) {
+
+				if( (age_in_seconds / 60 / 60) > 24 ) {
+					setStatusNotOk( format( "Last temperature record is already %d days old.", (age_in_seconds / 60 / 60 / 24) ) );
+				} else {
+					setStatusNotOk( format( "Last temperature record is already %d hours old.", (age_in_seconds / 60 / 60) ) );
+				}
+			} else {
+				setStatusNotOk( format( "Last temperature record is already %d minutes old.", (age_in_seconds / 60 ) ) );
+			}
+
+		} else {
+			setStatusOk();
+		}
 	}
 
 
 	// Reset timer for next time
 	getApp()->addTimeout(this,ID_DATA_TIMER,1000);
 	return 1;
+}
+
+void MainWindow::setStatusOk()
+{
+	statusbar->getStatusLine()->setNormalText("");
+	statusbar->getStatusLine()->setTextColor( status_line_normal_color );
+}
+
+void MainWindow::setStatusNotOk( const std::string & message )
+{
+	statusbar->getStatusLine()->setNormalText(message.c_str());
+	statusbar->getStatusLine()->setTextColor( status_line_error_color );
+}
+
+time_t MainWindow::getDateAndTime( const std::string & date_time_str )
+{
+	struct tm tm = {};
+	if( strptime( date_time_str.c_str(), "%Y-%m-%d %H:%M:%S", &tm ) != 0 )
+	{
+		time_t timestamp = mktime( &tm );
+
+		if( timestamp == (time_t)-1) {
+			DEBUG( format( "Error converting time: %s to a time", date_time_str ) );
+			return 0;
+		}
+
+		return timestamp;
+	}
+
+	DEBUG( format( "Error converting time: %s to a time", date_time_str ) );
+
+	return 0;
 }
 
