@@ -39,12 +39,6 @@ public:
 
 int main( int argc, char **argv )
 {
-
-#ifdef WIN32
-  std::cout << "sorry this programm can't run on WIN32; Use a unix system!\n";
-  return 1;
-#endif
-
   Co co;
 
   try {
@@ -155,6 +149,7 @@ int main( int argc, char **argv )
   {
 	  // Make application
 	  FXApp application("CollectData","pi_sensor");
+	  application.setNormalFont( new FXFont(&application,"helvetica,140") );
 
 	  // Open display; this reads registry
 	  application.init(argc,argv);
