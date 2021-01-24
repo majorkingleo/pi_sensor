@@ -14,6 +14,7 @@
 #include "colored_output.h"
 #include "main_window.h"
 #include "csv_util.h"
+#include "FilterString.h"
 
 using namespace Tools;
 
@@ -74,6 +75,26 @@ void printAllRecords( const std::string & file )
 		}
 
 		std::cout << std::endl;
+	}
+}
+
+void printAllRecords( const std::string & file, const std::string & filter )
+{
+	CSVUtil csv_util( file );
+
+	if( !csv_util ) {
+		throw REPORT_EXCEPTION( format( "Cannot open file %s ", file) );
+	}
+
+	FilterDataRecords data_filter;
+	data_filter.addFilter( new FilterString( filter,  DataRecord::Record::FIELD_DATE ) );
+
+	auto res = data_filter.filter(csv_util);
+
+	int count = 0;
+	for( auto csv_line : res )
+	{
+		std::cout << format( "%04d:", ++count ) << csv_line << std::endl;
 	}
 }
 
@@ -175,6 +196,12 @@ int main( int argc, char **argv )
   o_print_rall.setDescription("print all records reverse");
   o_print_rall.setRequired(false);
 
+  Arg::StringOption o_print_filter("f");
+  oc_print_stuff.addOptionR(&o_print_filter);
+  o_print_filter.addName("filter");
+  o_print_filter.setDescription("print filtered records");
+  o_print_filter.setRequired(false);
+
   const unsigned int console_width = 80;
 
   if( !arg.parse() )
@@ -244,6 +271,12 @@ int main( int argc, char **argv )
   if( o_print_rall.isSet() )
   {
 	  printAllRecordsReverse( data_file_name );
+	  return 0;
+  }
+
+  if( o_print_filter.isSet() )
+  {
+	  printAllRecords( data_file_name, *o_print_filter.getValues()->begin() );
 	  return 0;
   }
 

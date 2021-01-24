@@ -8,7 +8,6 @@
 #ifndef DATARECORD_H_
 #define DATARECORD_H_
 
-
 class DataRecord
 {
 public:
@@ -23,6 +22,5 @@ public:
 		MAX_FIELDS
 	};
 };
-
 
 #endif /* DATARECORD_H_ */

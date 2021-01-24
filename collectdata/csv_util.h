@@ -80,27 +80,7 @@ public:
 		reverse_iterator( const iterator & other )
 		: iterator( other )
 		{}
-/*
-		reverse_iterator & operator=( const reverse_iterator & other )
-		{
-			parent = other.parent;
-			pos = other.pos;
-			return *this;
-		}
 
-		bool operator!=( const reverse_iterator & other )
-		{
-			if( parent != other.parent ) {
-				return true;
-			}
-
-			if( pos != other.pos ) {
-				return true;
-			}
-
-			return false;
-		}
-*/
 		reverse_iterator & operator++();
 		reverse_iterator operator++( int amount );
 

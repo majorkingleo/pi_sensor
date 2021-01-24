@@ -6,7 +6,12 @@ collectdata_SOURCES=\
 		OutDebug.cc\
 		colored_output.cc \
 		main_window.cc \
-		csv_util.cc
+		csv_util.cc \
+		FilterDataRecords.cc \
+		DataRecord.cc \
+		FilterDay.cc \
+		FilterString.cc
+
 
 AM_CPPFLAGS = -I$(top_srcdir)/tools \
 	-I$(top_srcdir)/cpputils/cpputilsshared  \
