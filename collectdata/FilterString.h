@@ -20,7 +20,7 @@ protected:
 public:
 	FilterString( const std::string & str_, DataRecord::Record field_ )
 	: str( str_ ),
-	  field( field )
+	  field( field_ )
 	{}
 
 	virtual bool operator()( const std::vector<std::string> & records );

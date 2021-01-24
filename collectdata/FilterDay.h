@@ -8,11 +8,12 @@
 #ifndef FILTERDAY_H_
 #define FILTERDAY_H_
 
-#include "FilterDataRecords.h"
+#include "FilterString.h"
 
-class FilterDay : public FilterDataRecords
+class FilterDay : public FilterString
 {
 public:
+	FilterDay( time_t day );
 
 };
 

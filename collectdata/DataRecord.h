@@ -8,6 +8,8 @@
 #ifndef DATARECORD_H_
 #define DATARECORD_H_
 
+#include <string>
+
 class DataRecord
 {
 public:
@@ -21,6 +23,12 @@ public:
 		FIELD_HUMIDITY_OUTSIDE,
 		MAX_FIELDS
 	};
+
+	static const std::string DATE_FORMAT;
+
+public:
+
+	static std::string getDateStr( time_t t );
 };
 
 #endif /* DATARECORD_H_ */

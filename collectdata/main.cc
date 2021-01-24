@@ -15,6 +15,7 @@
 #include "main_window.h"
 #include "csv_util.h"
 #include "FilterString.h"
+#include "FilterDay.h"
 
 using namespace Tools;
 
@@ -98,6 +99,26 @@ void printAllRecords( const std::string & file, const std::string & filter )
 	}
 }
 
+void printAllDateRecords( const std::string & file, time_t when )
+{
+	CSVUtil csv_util( file );
+
+	if( !csv_util ) {
+		throw REPORT_EXCEPTION( format( "Cannot open file %s ", file) );
+	}
+
+	FilterDataRecords data_filter;
+	data_filter.addFilter( new FilterDay( when ) );
+
+	auto res = data_filter.filter(csv_util);
+
+	int count = 0;
+	for( auto csv_line : res )
+	{
+		std::cout << format( "%04d:", ++count ) << csv_line << std::endl;
+	}
+}
+
 
 void printAllRecordsReverse( const std::string & file )
 {
@@ -121,6 +142,8 @@ void printAllRecordsReverse( const std::string & file )
 		std::cout << std::endl;
 	}
 }
+
+
 
 int main( int argc, char **argv )
 {
@@ -202,6 +225,11 @@ int main( int argc, char **argv )
   o_print_filter.setDescription("print filtered records");
   o_print_filter.setRequired(false);
 
+  Arg::FlagOption o_print_today("today");
+  oc_print_stuff.addOptionR(&o_print_today);
+  o_print_today.setDescription("print today records");
+  o_print_today.setRequired(false);
+
   const unsigned int console_width = 80;
 
   if( !arg.parse() )
@@ -277,6 +305,12 @@ int main( int argc, char **argv )
   if( o_print_filter.isSet() )
   {
 	  printAllRecords( data_file_name, *o_print_filter.getValues()->begin() );
+	  return 0;
+  }
+
+  if( o_print_today.isSet() )
+  {
+	  printAllDateRecords( data_file_name, time(0) );
 	  return 0;
   }
 
