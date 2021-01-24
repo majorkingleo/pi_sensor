@@ -21,8 +21,12 @@ CSVUtil::CSVUtil( const std::string & file )
 
 bool CSVUtil::moveToStartOfLine(std::ifstream& fs) const
 {
+	if( fs.tellg() == 0 ) {
+		return true;
+	}
+
     fs.seekg(-1, std::ios_base::cur);
-    for(long i = fs.tellg(); i > 0; i--)
+    for(long i = fs.tellg(); i >= 0; i--)
     {
         if(fs.peek() == '\n')
         {
@@ -30,6 +34,11 @@ bool CSVUtil::moveToStartOfLine(std::ifstream& fs) const
             return true;
         }
         fs.seekg(i, std::ios_base::beg);
+
+    	if( fs.tellg() == 0 ) {
+    		return true;
+    	}
+
     }
     return false;
 }
@@ -148,6 +157,10 @@ CSVUtil::iterator & CSVUtil::iterator::operator++()
 
 CSVUtil::iterator CSVUtil::iterator::operator--( int amount )
 {
+	if( pos == 0 ) {
+		return *this;
+	}
+
 	if( amount == 0 ) {
 		amount = 1;
 	}
@@ -156,41 +169,38 @@ CSVUtil::iterator CSVUtil::iterator::operator--( int amount )
 
 	std::fstream::pos_type p = pos - 1l;
 
-	if( pos == 0 ) {
-		p = 0;
-	}
-
 	parent->setCurrentPos(p);
 
 	for( int n = 0; n < amount; n++ )
 	{
-		DEBUG( format("n: %d", n ) );
+		DEBUG( format("n: %d pos: %d", n, pos ) );
 		if( !parent->moveToStartOfLine(parent->in) ) {
-			DEBUG( "moveToEndOfLine failed" );
+			DEBUG( "moveToStartOfLine failed" );
 			break;
 		}
 	}
 
 	pos = parent->getCurrentPos();
+	DEBUG( format("pos is: %d", pos ) );
 
 	return ret;
 }
 
 CSVUtil::iterator & CSVUtil::iterator::operator--()
 {
-	std::fstream::pos_type p = pos - 1l;
-
 	if( pos == 0 ) {
-		p = 0;
+		return *this;
 	}
+
+	std::fstream::pos_type p = pos - 1l;
 
 	parent->setCurrentPos(p);
 
 	if( !parent->moveToStartOfLine(parent->in) ) {
 		DEBUG( "moveToStartOfLine failed" );
+	} else {
+		pos = parent->getCurrentPos();
 	}
-
-	pos = parent->getCurrentPos();
 
 	return *this;
 }
@@ -200,3 +210,46 @@ std::vector<std::string> CSVUtil::iterator::operator*()
 	parent->setCurrentPos(pos);
 	return parent->getLine();
 }
+
+CSVUtil::reverse_iterator CSVUtil::rbegin()
+{
+	in.seekg(-1, std::ios_base::end);
+	moveToStartOfLine( in );
+	std::fstream::pos_type pos = in.tellg();
+
+	in.seekg(0,std::ios_base::end);
+
+	DEBUG( format( "start is at: %d end is at %d", pos,  in.tellg() ) );
+
+	return reverse_iterator( this, pos );
+}
+
+CSVUtil::reverse_iterator CSVUtil::rend()
+{
+	return reverse_iterator( this, -1 );
+}
+
+CSVUtil::reverse_iterator & CSVUtil::reverse_iterator::operator++() {
+	if( pos == 0 ) {
+		pos = -1;
+		return *this;
+	}
+
+	iterator::operator--();
+	return *this;
+}
+
+CSVUtil::reverse_iterator CSVUtil::reverse_iterator::operator++(int amount) {
+
+	reverse_iterator ret( *this );
+
+	if( pos == 0 ) {
+		pos = -1;
+		return ret;
+	}
+
+	iterator::operator--(amount);
+
+	return ret;
+}
+

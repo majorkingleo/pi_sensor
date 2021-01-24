@@ -42,6 +42,16 @@ void printLast( const std::string & days, const std::string & file )
 	int nDays = s2x<int>(days,0);
 }
 
+std::ostream & operator<<( std::ostream & out, const std::vector<std::string> & data )
+{
+	for( const std::string & s : data )
+	{
+		out << s << ";";
+	}
+
+	return out;
+}
+
 void printAllRecords( const std::string & file )
 {
 	CSVUtil csv_util( file );
@@ -67,6 +77,29 @@ void printAllRecords( const std::string & file )
 	}
 }
 
+
+void printAllRecordsReverse( const std::string & file )
+{
+	CSVUtil csv_util( file );
+
+	if( !csv_util ) {
+		throw REPORT_EXCEPTION( format( "Cannot open file %s ", file) );
+	}
+
+	int count = 0;
+
+	for( auto it = csv_util.rbegin(); it != csv_util.rend(); it++ )
+	{
+		std::cout << format( "%04d:", ++count );
+
+		for( std::string & rec : *it )
+		{
+			std::cout << rec << ";";
+		}
+
+		std::cout << std::endl;
+	}
+}
 
 int main( int argc, char **argv )
 {
@@ -136,6 +169,12 @@ int main( int argc, char **argv )
   o_print_all.setDescription("print all records");
   o_print_all.setRequired(false);
 
+  Arg::FlagOption o_print_rall("ra");
+  oc_print_stuff.addOptionR(&o_print_rall);
+  o_print_rall.addName("reverse-all");
+  o_print_rall.setDescription("print all records reverse");
+  o_print_rall.setRequired(false);
+
   const unsigned int console_width = 80;
 
   if( !arg.parse() )
@@ -199,6 +238,12 @@ int main( int argc, char **argv )
   if( o_print_all.isSet() )
   {
 	  printAllRecords( data_file_name );
+	  return 0;
+  }
+
+  if( o_print_rall.isSet() )
+  {
+	  printAllRecordsReverse( data_file_name );
 	  return 0;
   }
 

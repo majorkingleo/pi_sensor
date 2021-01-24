@@ -17,6 +17,7 @@ class CSVUtil
 public:
 	class iterator
 	{
+	protected:
 		CSVUtil *parent;
 		std::fstream::pos_type pos;
 
@@ -65,6 +66,54 @@ public:
 		std::vector<std::string> operator*();
 	};
 
+	class reverse_iterator : public iterator
+	{
+	public:
+		reverse_iterator( CSVUtil * parent_ )
+		: iterator( parent_ )
+		{}
+
+		reverse_iterator( CSVUtil * parent_, std::fstream::pos_type pos_ )
+		: iterator( parent_ , pos_)
+		{}
+
+		reverse_iterator( const iterator & other )
+		: iterator( other )
+		{}
+/*
+		reverse_iterator & operator=( const reverse_iterator & other )
+		{
+			parent = other.parent;
+			pos = other.pos;
+			return *this;
+		}
+
+		bool operator!=( const reverse_iterator & other )
+		{
+			if( parent != other.parent ) {
+				return true;
+			}
+
+			if( pos != other.pos ) {
+				return true;
+			}
+
+			return false;
+		}
+*/
+		reverse_iterator & operator++();
+		reverse_iterator operator++( int amount );
+
+		reverse_iterator operator--( int amount ) {
+			return iterator::operator++( amount );
+		}
+
+		reverse_iterator & operator--() {
+			iterator::operator++();
+			return *this;
+		}
+	};
+
 	friend class iterator;
 
 protected:
@@ -82,6 +131,9 @@ public:
 
 	iterator begin();
 	iterator end();
+
+	reverse_iterator rbegin();
+	reverse_iterator rend();
 
 	std::fstream::pos_type getCurrentPos() {
 		return in.tellg();
