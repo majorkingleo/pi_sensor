@@ -11,15 +11,20 @@
 #include <format.h>
 #include <time.h>
 #include <debug.h>
+#include <string_utils.h>
 
 using namespace Tools;
 
 const std::string DataRecord::DATE_FORMAT = "%Y-%m-%d";
-const std::string DataRecord::TIME_FORMAT = "%H-%M-%S";
+const std::string DataRecord::TIME_FORMAT = "%H:%M:%S";
 const std::string DataRecord::DATE_TIME_FORMAT = DataRecord::DATE_FORMAT + " " + DataRecord::TIME_FORMAT;
 
 DataRecord::DataRecord( const std::vector<std::string> & rec )
-: timestamp(0)
+: timestamp(0),
+  degrees_inside(0.0),
+  humidity_inside(0.0),
+  degrees_outside(0.0),
+  humidity_outside(0.0)
 {
 	if( !parse( rec ) ) {
 		throw REPORT_EXCEPTION( "cannot parse records" );
@@ -61,10 +66,43 @@ bool DataRecord::parse( const std::vector<std::string> & rec )
 				DEBUG( format( "Error converting time: %s %s to a time", rec[FIELD_DATE], rec[FIELD_TIME] ) );
 				return false;
 			}
-		} // if
-	} // if
+		} else {
+			DEBUG( format( "Timevalue: %s cannot be parsed", rec[FIELD_TIME]));
+		}
+	} else {
+		DEBUG( format( "Datevalue: %s cannot be parsed", rec[FIELD_DATE]));
+	}
+
+	degrees_inside   = s2x<float>( rec[FIELD_DEGREE_INSIDE], 0.0 );
+	humidity_inside  = s2x<float>( rec[FIELD_HUMIDITY_INSIDE], 0.0 );
+	degrees_outside  = s2x<float>( rec[FIELD_DEGREE_OUTSIDE], 0.0 );
+	humidity_outside = s2x<float>( rec[FIELD_HUMIDITY_OUTSIDE], 0.0 );
 
 	return true;
+}
+
+std::string DataRecord::toString() const
+{
+	std::stringstream str;
+
+	char acBuffer[100] = "";
+	struct tm *ptm = localtime( &timestamp );
+
+	if( ptm ) {
+		strftime( acBuffer, sizeof(acBuffer), DATE_TIME_FORMAT.c_str(), ptm );
+		str << acBuffer;
+	}
+
+	str << ";" << format( "%02.1f;%02.1f;%02.1f;%02.1f",
+						  degrees_inside, humidity_inside,
+						  degrees_outside, humidity_outside );
+
+	return str.str();
+}
+
+std::ostream & operator<<( std::ostream & out, const DataRecord & rec )
+{
+	return out << rec.toString();
 }
 
 

@@ -162,9 +162,26 @@ void printAllLast24( const std::string & file)
 	auto res = data_filter.filter(csv_util);
 
 	int count = 0;
+
+	std::list<DataRecord> entries;
+
 	for( auto csv_line : res )
 	{
-		std::cout << format( "%04d:", ++count ) << csv_line << std::endl;
+		entries.push_back( DataRecord( csv_line ) );
+	}
+
+	entries.sort(DataRecord::sort_by_time_asc());
+
+	time_t start_at = time(0)-24*60*60;
+
+	count = 0;
+	for( auto rec : entries )
+	{
+		if( rec.timestamp < start_at ) {
+			continue;
+		}
+
+		std::cout << format( "%04d:", ++count ) << rec << std::endl;
 	}
 }
 
