@@ -143,6 +143,30 @@ void printAllRecordsReverse( const std::string & file )
 	}
 }
 
+void printAllLast24( const std::string & file)
+{
+	CSVUtil csv_util( file );
+
+	if( !csv_util ) {
+		throw REPORT_EXCEPTION( format( "Cannot open file %s ", file) );
+	}
+
+	DataRecord rec(csv_util.getLastLine());
+
+	FilterDataRecords data_filter;
+	data_filter.setSeekdir(FilterDataRecords::SEEKDIR_BACKWARDS);
+	data_filter.setStrategy(FilterDataRecords::STRATEGY_ANY_FILTERS_IS_MATCHING);
+	data_filter.addFilter( new FilterDay( time(0)-24*60*60 ) );
+	data_filter.addFilter( new FilterDay( time(0) ) );
+
+	auto res = data_filter.filter(csv_util);
+
+	int count = 0;
+	for( auto csv_line : res )
+	{
+		std::cout << format( "%04d:", ++count ) << csv_line << std::endl;
+	}
+}
 
 
 int main( int argc, char **argv )
@@ -230,6 +254,11 @@ int main( int argc, char **argv )
   o_print_today.setDescription("print today records");
   o_print_today.setRequired(false);
 
+  Arg::FlagOption o_print_last24("last24");
+  oc_print_stuff.addOptionR(&o_print_last24);
+  o_print_last24.setDescription("print min max of last 24 hours");
+  o_print_last24.setRequired(false);
+
   const unsigned int console_width = 80;
 
   if( !arg.parse() )
@@ -311,6 +340,12 @@ int main( int argc, char **argv )
   if( o_print_today.isSet() )
   {
 	  printAllDateRecords( data_file_name, time(0) );
+	  return 0;
+  }
+
+  if( o_print_last24.isSet() )
+  {
+	  printAllLast24( data_file_name );
 	  return 0;
   }
 

@@ -15,6 +15,7 @@ class FilterDay : public FilterString
 public:
 	FilterDay( time_t day );
 
+	virtual bool operator()( const std::vector<std::string> & records );
 };
 
 

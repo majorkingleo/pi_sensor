@@ -9,6 +9,7 @@
 #define DATARECORD_H_
 
 #include <string>
+#include <vector>
 
 class DataRecord
 {
@@ -25,10 +26,17 @@ public:
 	};
 
 	static const std::string DATE_FORMAT;
+	static const std::string TIME_FORMAT;
+	static const std::string DATE_TIME_FORMAT;
+
+	time_t timestamp;
 
 public:
+	DataRecord( const std::vector<std::string> & rec );
 
 	static std::string getDateStr( time_t t );
+
+	bool parse( const std::vector<std::string> & rec );
 };
 
 #endif /* DATARECORD_H_ */

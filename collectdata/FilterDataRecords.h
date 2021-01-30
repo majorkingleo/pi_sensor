@@ -17,12 +17,21 @@ class FilterDataRecords
 public:
 	class Filter
 	{
+	protected:
+		bool found_any_record;
+		bool found_last_record;
+
 	public:
+		Filter()
+		: found_any_record( false ),
+		  found_last_record( false )
+		{}
+
 		virtual ~Filter() {}
 
 		virtual bool operator()( const std::vector<std::string> & records ) = 0;
 
-		virtual bool continueProcessing() { return true; }
+		virtual bool continueProcessing();
 	};
 
 	enum SEEKDIR
