@@ -15,6 +15,37 @@ class MainWindow : public FXMainWindow
 {
 	FXDECLARE(MainWindow)
 protected:
+	struct MinMax
+	{
+		FXDataTarget target_degrees;
+		FXint		 value_degrees;
+		FXDataTarget target_humidity;
+		FXint		 value_humidity;
+		bool 		 initialized;
+
+		MinMax()
+		: target_degrees(),
+		  value_degrees(0),
+		  target_humidity(),
+		  value_humidity(0),
+		  initialized(true)
+		{
+			target_degrees.connect( value_degrees );
+			target_humidity.connect( value_humidity );
+		}
+	};
+
+	enum WHERE {
+		WHERE_INSIDE = 0,
+		WHERE_OUTSIDE
+	};
+
+	enum MINMAX {
+		MINMAX_MIN = 0,
+		MINMAX_MAX
+	};
+
+protected:
 
 	// Member data
 	FXMenuBar*         menubar;
@@ -47,6 +78,8 @@ protected:
 
 	std::string 	   DATA_FILE_NAME;
 
+	MinMax	   		   min_max[2][2];
+
 	MainWindow() {}
 
 public:
@@ -54,6 +87,7 @@ public:
 		ID_PANEL = FXMainWindow::ID_LAST,
 		ID_CLOCK_TIMER,
 		ID_DATA_TIMER,
+		ID_MINMAX_DATA_TIMER,
 	};
 
 public:
@@ -68,12 +102,16 @@ public:
 
 	long onClockTimeout(FXObject*,FXSelector,void*);
 	long onDataTimeout(FXObject*,FXSelector,void*);
+	long onMinMaxDataTimeout(FXObject*,FXSelector,void*);
 
 protected:
 	void createDataFields( FXComposite *fdata, const char *title, FXDataTarget *degree_target,  FXDataTarget *humidity_target );
 	void setStatusOk();
 	void setStatusNotOk( const std::string & message );
 	time_t getDateAndTime( const std::string & date_time_str );
+
+	void min( FXint & value, float & rec_value );
+	void max( FXint & value, float & rec_value );
 };
 
 
