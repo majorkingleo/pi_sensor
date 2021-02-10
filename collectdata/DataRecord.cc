@@ -47,6 +47,38 @@ std::string DataRecord::getDateStr( time_t t )
 	return acBuffer;
 }
 
+std::string DataRecord::getTimeStr( time_t t )
+{
+	struct tm *ptm = localtime( &t );
+
+	if( ptm == NULL ) {
+		throw REPORT_EXCEPTION( format( "localtime failed! %s", strerror(errno) ) );
+	}
+
+	struct tm tm = *ptm;
+
+	char acBuffer[100];
+	strftime( acBuffer, sizeof(acBuffer), TIME_FORMAT.c_str(), &tm );
+
+	return acBuffer;
+}
+
+std::string DataRecord::getDateTimeStr( time_t t )
+{
+	struct tm *ptm = localtime( &t );
+
+	if( ptm == NULL ) {
+		throw REPORT_EXCEPTION( format( "localtime failed! %s", strerror(errno) ) );
+	}
+
+	struct tm tm = *ptm;
+
+	char acBuffer[100];
+	strftime( acBuffer, sizeof(acBuffer), DATE_TIME_FORMAT.c_str(), &tm );
+
+	return acBuffer;
+}
+
 bool DataRecord::parse( const std::vector<std::string> & rec )
 {
 	struct tm tm = {};

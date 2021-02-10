@@ -16,6 +16,7 @@
 #include "csv_util.h"
 #include "FilterString.h"
 #include "FilterDay.h"
+#include "Gen24HoursPlot.h"
 
 using namespace Tools;
 
@@ -143,7 +144,7 @@ void printAllRecordsReverse( const std::string & file )
 	}
 }
 
-void printAllLast24( const std::string & file)
+void printAllLast24( const std::string & file, bool generate_gnuplot_data )
 {
 	CSVUtil csv_util( file );
 
@@ -175,13 +176,44 @@ void printAllLast24( const std::string & file)
 	time_t start_at = time(0)-24*60*60;
 
 	count = 0;
-	for( auto rec : entries )
+
+	auto it_begin_with_time = entries.end();
+
+	for( auto it = entries.begin(); it != entries.end(); it++ )
 	{
+		auto & rec = *it;
+
 		if( rec.timestamp < start_at ) {
 			continue;
 		}
 
+		if( it_begin_with_time == entries.end() ) {
+			it_begin_with_time = it;
+		}
+
+
 		std::cout << format( "%04d:", ++count ) << rec << std::endl;
+	}
+
+	if( generate_gnuplot_data )
+	{
+		Gen24HoursPlot gen;
+
+		std::vector<std::string> data_outside;
+		std::vector<std::string> data_inside;
+		std::vector<std::string> time_stamps;
+
+		for( auto it = it_begin_with_time; it != entries.end(); it++ )
+		{
+			data_outside.push_back( x2s(it->degrees_outside) );
+			data_inside.push_back( x2s(it->degrees_inside) );
+			time_stamps.push_back( it->getDateTimeStr( it->timestamp ) );
+		}
+
+		gen.addData( "Outside", data_outside );
+		gen.addData( "Inside", data_inside );
+		gen.setXDescriptionValues( time_stamps );
+		gen.create();
 	}
 }
 
@@ -276,6 +308,11 @@ int main( int argc, char **argv )
   o_print_last24.setDescription("print min max of last 24 hours");
   o_print_last24.setRequired(false);
 
+  Arg::FlagOption o_gnuplot("gnuplot");
+  oc_print_stuff.addOptionR(&o_gnuplot);
+  o_gnuplot.setDescription("generate gnuplot graph");
+  o_gnuplot.setRequired(false);
+
   const unsigned int console_width = 80;
 
   if( !arg.parse() )
@@ -362,7 +399,7 @@ int main( int argc, char **argv )
 
   if( o_print_last24.isSet() )
   {
-	  printAllLast24( data_file_name );
+	  printAllLast24( data_file_name, o_gnuplot.isSet() );
 	  return 0;
   }
 

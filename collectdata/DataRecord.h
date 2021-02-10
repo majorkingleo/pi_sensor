@@ -50,6 +50,8 @@ public:
 	DataRecord( const std::vector<std::string> & rec );
 
 	static std::string getDateStr( time_t t );
+	static std::string getTimeStr( time_t t );
+	static std::string getDateTimeStr( time_t t );
 
 	bool parse( const std::vector<std::string> & rec );
 

@@ -10,7 +10,9 @@ collectdata_SOURCES=\
 		FilterDataRecords.cc \
 		DataRecord.cc \
 		FilterDay.cc \
-		FilterString.cc
+		FilterString.cc \
+		GenGnuPlotData.cc \
+		Gen24HoursPlot.cc
 
 
 AM_CPPFLAGS = -I$(top_srcdir)/tools \
