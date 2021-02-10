@@ -6,9 +6,16 @@ using namespace Tools;
 
 const std::string GenGnuPlotData::XTIC = "xtic";
 
+std::string GenGnuPlotData::createDataFileName()
+{
+	return format( "%s.in", data_file );
+}
+
 void GenGnuPlotData::create()
 {
-	std::ofstream config( "gnuplot.input", std::ios_base::trunc );
+	std::string df = createDataFileName();
+
+	std::ofstream config( data_file.c_str(), std::ios_base::trunc );
 
 	config << "set terminal png size " << width << "," << height << " lw 3\n";
 	config << "set output '" << image_file << "'\n";

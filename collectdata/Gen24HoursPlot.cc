@@ -6,7 +6,9 @@ using namespace Tools;
 
 void Gen24HoursPlot::create()
 {
-	std::ofstream config( "gnuplot.input", std::ios_base::trunc );
+	std::string df = createDataFileName();
+
+	std::ofstream config( df.c_str(), std::ios_base::trunc );
 
 	config << "set terminal png size " << width << "," << height << " lw 3\n";
 	config << "set output '" << image_file << "'\n";
@@ -16,6 +18,11 @@ void Gen24HoursPlot::create()
 	// config << "set xrange ['00:00:00':'23:59:59']\n";
 	config << "set datafile separator ','\n";
 	config << "set style data lines\n";
+
+	if( !title.empty() ) {
+		config << "set title '" << title << "'\n";
+	}
+
 	config << "plot";
 
 	unsigned long max = unifyData();
@@ -62,7 +69,10 @@ void Gen24HoursPlot::create()
 
 	config << '\n';
 
-	system( "gnuplot gnuplot.input" );
+	config.close();
+	fdata.close();
+
+	system( format("gnuplot '%s'", df ).c_str() );
 }
 
 

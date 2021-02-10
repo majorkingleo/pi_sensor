@@ -52,11 +52,14 @@ protected:
 	FXTabBook*         tabbook;
 	FXTabItem*         tab1;
 	FXTabItem*         tab2;
+	FXTabItem*         tab3;
 	FXHorizontalFrame* contents;
 	FXVerticalFrame*   contents_currentdata;
 	FXVerticalFrame*   contents_min_max;
+	FXVerticalFrame*   contents_temp_last24;
 	FXLabel*		   clock;
 	FXLabel*		   dataset_date_and_time;
+	FXImageView*	   imageview;
 
 	FXDataTarget       degree_inside_target;
 	FXint	           degree_inside;
@@ -88,6 +91,7 @@ public:
 		ID_CLOCK_TIMER,
 		ID_DATA_TIMER,
 		ID_MINMAX_DATA_TIMER,
+		ID_LAST24_HOUR_TIMER,
 	};
 
 public:
@@ -103,6 +107,7 @@ public:
 	long onClockTimeout(FXObject*,FXSelector,void*);
 	long onDataTimeout(FXObject*,FXSelector,void*);
 	long onMinMaxDataTimeout(FXObject*,FXSelector,void*);
+	long onLast24HourTimeout(FXObject*,FXSelector,void*);
 
 protected:
 	void createDataFields( FXComposite *fdata, const char *title, FXDataTarget *degree_target,  FXDataTarget *humidity_target );
@@ -112,6 +117,8 @@ protected:
 
 	void min( FXint & value, float & rec_value );
 	void max( FXint & value, float & rec_value );
+
+	bool loadImage(const FXString& file);
 };
 
 

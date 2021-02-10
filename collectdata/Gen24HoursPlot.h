@@ -6,6 +6,8 @@
 
 class Gen24HoursPlot : public GenGnuPlotData
 {
+
+
 public:
 	Gen24HoursPlot()
 	: GenGnuPlotData()

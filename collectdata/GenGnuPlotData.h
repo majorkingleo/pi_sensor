@@ -16,6 +16,7 @@ protected:
 
 	std::string image_file;
 	std::string data_file;
+	std::string title;
 
 	std::map< std::string, std::vector<std::string> > data;
 
@@ -24,7 +25,8 @@ public:
 	: width(800),
 	  height(500),
 	  image_file("gnuplot.png"),
-	  data_file("gnuplot")
+	  data_file("gnuplot"),
+	  title()
 	{}
 
 	virtual ~GenGnuPlotData() {}
@@ -45,6 +47,10 @@ public:
 		data_file = name;
 	}
 
+	void setTitle( const std::string & title_ ) {
+		title = title_;
+	}
+
 	void addData( const std::string & title, const std::vector<std::string> & data_ ) {
 		data[title] = data_;
 	}
@@ -53,11 +59,11 @@ public:
 		data[XTIC] = data_;
 	}
 
-
 	virtual void create();
 
 protected:
 	virtual unsigned long unifyData();
+	std::string createDataFileName();
 };
 
 

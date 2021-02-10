@@ -14,6 +14,9 @@
 #include <debug.h>
 #include <FilterDataRecords.h>
 #include <FilterDay.h>
+#include "FXPNGImage.h"
+#include "FXJPGImage.h"
+#include "Gen24HoursPlot.h"
 
 using namespace Tools;
 
@@ -21,12 +24,13 @@ FXDEFMAP(MainWindow) MainWindowMap[]={
 		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_CLOCK_TIMER,MainWindow::onClockTimeout),
 		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_DATA_TIMER,MainWindow::onDataTimeout),
 		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_MINMAX_DATA_TIMER,MainWindow::onMinMaxDataTimeout),
+		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_LAST24_HOUR_TIMER,MainWindow::onLast24HourTimeout),
 };
 
 FXIMPLEMENT( MainWindow, FXMainWindow, MainWindowMap, ARRAYNUMBER( MainWindowMap));
 
 MainWindow::MainWindow(FXApp *a)
-:	FXMainWindow(a,"Show Data",NULL,NULL,DECOR_ALL,0,0,600,600),
+:	FXMainWindow(a,"Show Data",NULL,NULL,DECOR_ALL,0,0,1000,700),
 	DATA_FILE_NAME( "temperatures.csv" ),
 	degree_inside(0),
 	humidity_inside(0),
@@ -136,6 +140,17 @@ MainWindow::MainWindow(FXApp *a)
 						  &min_max[WHERE_OUTSIDE][MINMAX_MAX].target_degrees,
 						  &min_max[WHERE_OUTSIDE][MINMAX_MAX].target_humidity );
 
+
+
+
+	// First item is a list
+	tab3=new ThemeTabItem(tabbook,"&Temp last 24h",NULL);
+
+	contents_temp_last24 = new FXVerticalFrame(tabbook,FRAME_RAISED);
+
+	FXComposite *fdata_temp_last24 = new FXHorizontalFrame(contents_temp_last24, LAYOUT_FILL_Y|LAYOUT_FILL_X);
+
+	imageview=new FXImageView(fdata_temp_last24,NULL,NULL,0,LAYOUT_FILL_X|LAYOUT_FILL_Y);
 }
 
 void MainWindow::createDataFields( FXComposite *fdata, const char *title, FXDataTarget *degree_target,  FXDataTarget *humidity_target )
@@ -179,8 +194,10 @@ void MainWindow::create()
    getApp()->addTimeout(this,ID_CLOCK_TIMER,0);
    getApp()->addTimeout(this,ID_DATA_TIMER,0);
    getApp()->addTimeout(this,ID_MINMAX_DATA_TIMER,1000);
+   getApp()->addTimeout(this,ID_LAST24_HOUR_TIMER,2000);
 
    FXMainWindow::create();
+
    show(PLACEMENT_SCREEN);
 }
 
@@ -398,4 +415,165 @@ void MainWindow::max( FXint & value, float & rec_value )
 {
 	value = std::max( value, static_cast<FXint>(rec_value) );
 }
+
+bool MainWindow::loadImage(const FXString& file)
+{
+	FXString ext=FXPath::extension(file);
+	FXImage *img=NULL;
+	FXImage *old;
+	if(comparecase(ext,"gif")==0){
+		img=new FXGIFImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
+	}
+	else if(comparecase(ext,"bmp")==0){
+		img=new FXBMPImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
+	}
+	else if(comparecase(ext,"xpm")==0){
+		img=new FXXPMImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
+	}
+	else if(comparecase(ext,"pcx")==0){
+		img=new FXPCXImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
+	}
+	else if(comparecase(ext,"ico")==0 || comparecase(ext,"cur")==0){
+		img=new FXICOImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
+	}
+	else if(comparecase(ext,"tga")==0){
+		img=new FXTGAImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
+	}
+	else if(comparecase(ext,"rgb")==0){
+		img=new FXRGBImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
+	}
+	else if(comparecase(ext,"xbm")==0){
+		img=new FXXBMImage(getApp(),NULL,NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
+	}
+	else if(comparecase(ext,"ppm")==0){
+		img=new FXPPMImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
+	}
+	else if(comparecase(ext,"iff")==0 || comparecase(ext,"lbm")==0){
+		img=new FXIFFImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
+	}
+	else if(comparecase(ext,"ras")==0){
+		img=new FXRASImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
+	}
+	else if(comparecase(ext,"png")==0){
+		img=new FXPNGImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
+	}
+	else if(comparecase(ext,"jpg")==0){
+		img=new FXJPGImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
+	}
+
+	// Perhaps failed
+	if(img==NULL){
+		FXMessageBox::error(this,MBOX_OK,"Error Loading Image","Unsupported type: %s",ext.text());
+		return FALSE;
+	}
+
+	// Load it
+	FXFileStream stream;
+	if(stream.open(file,FXStreamLoad)){
+		getApp()->beginWaitCursor();
+		img->loadPixels(stream);
+		stream.close();
+
+		//img->gradient(FXRGB(255,0,0),FXRGB(0,255,0),FXRGB(0,0,255),FXRGB(255,255,255));
+		//img->gradient(FXRGB(255,0,0),FXRGB(255,255,0),FXRGB(0,0,255),FXRGB(255,0,255));
+		//img->hgradient(FXRGB(255,0,0),FXRGB(0,0,255));
+		//img->vgradient(FXRGB(255,0,0),FXRGB(0,0,255));
+		//img->fill(FXRGB(255,0,0));
+		//img->fade(FXRGB(255,255,255),128);
+		//img->blend(getApp()->getBaseColor());
+		//img->blend(FXRGB(255,128,255));
+		//img->xshear(-30*256,FXRGB(0,255,128));
+		//img->yshear(-50*256,FXRGB(0,255,128));
+
+
+		img->create();
+		old=imageview->getImage();
+		imageview->setImage(img);
+		delete old;
+		getApp()->endWaitCursor();
+	}
+	return TRUE;
+}
+
+
+long MainWindow::onLast24HourTimeout(FXObject*,FXSelector,void*)
+{
+	CSVUtil csv_util( DATA_FILE_NAME );
+
+	if( !csv_util ) {
+		std::cerr << "cannot open file " << "temperatures.csv" << std::endl;
+	}
+
+	time_t start_at = time(0)-24*60*60;
+
+	FilterDataRecords data_filter;
+	data_filter.setSeekdir(FilterDataRecords::SEEKDIR_BACKWARDS);
+	data_filter.setStrategy(FilterDataRecords::STRATEGY_ANY_FILTERS_IS_MATCHING);
+	data_filter.addFilter( new FilterDay( start_at) );
+	data_filter.addFilter( new FilterDay( time(0) ) );
+
+	auto res = data_filter.filter(csv_util);
+
+	int count = 0;
+
+	std::list<DataRecord> entries;
+
+	for( auto csv_line : res )
+	{
+		entries.push_back( DataRecord( csv_line ) );
+	}
+
+	entries.sort(DataRecord::sort_by_time_asc());
+
+	count = 0;
+
+	auto it_begin_with_time = entries.end();
+
+	for( auto it = entries.begin(); it != entries.end(); it++ )
+	{
+		auto & rec = *it;
+
+		if( rec.timestamp < start_at ) {
+			continue;
+		}
+
+		if( it_begin_with_time == entries.end() ) {
+			it_begin_with_time = it;
+		}
+	}
+
+	Gen24HoursPlot gen;
+
+	const char * imageFile = "dataLast24Hours.png";
+	const char * dataFile = "dataLast24Hours";
+
+	gen.setImageFileName( imageFile );
+	gen.setDataFileName( dataFile );
+	gen.setTitle( "Temperatures Last 24 Hours");
+
+	std::vector<std::string> data_outside;
+	std::vector<std::string> data_inside;
+	std::vector<std::string> time_stamps;
+
+	for( auto it = it_begin_with_time; it != entries.end(); it++ )
+	{
+		data_outside.push_back( x2s(it->degrees_outside) );
+		data_inside.push_back( x2s(it->degrees_inside) );
+		time_stamps.push_back( it->getDateTimeStr( it->timestamp ) );
+	}
+
+	gen.addData( "Outside", data_outside );
+	gen.addData( "Inside", data_inside );
+	gen.setXDescriptionValues( time_stamps );
+	gen.create();
+
+	loadImage(imageFile);
+
+	// Reset timer for next time
+	getApp()->addTimeout(this,ID_LAST24_HOUR_TIMER,1000*5*60);
+	return 1;
+}
+
+
+
 
