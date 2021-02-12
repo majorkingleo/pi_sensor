@@ -1,0 +1,78 @@
+#include "GenXDaysPlot.h"
+#include <fstream>
+#include <cpp_utils.h>
+
+using namespace Tools;
+
+void GenXDaysPlot::create()
+{
+	std::string df = createDataFileName();
+
+	std::ofstream config( df.c_str(), std::ios_base::trunc );
+
+	config << "set terminal png size " << width << "," << height << " lw 3\n";
+	config << "set output '" << image_file << "'\n";
+	config << "set xdata time\n";
+	config << "set timefmt '%Y-%m-%d %H:%M:%S'\n";
+	config << "set format x '%a %d.%m'\n";
+	// config << "set xrange ['00:00:00':'23:59:59']\n";
+	config << "set datafile separator ','\n";
+	config << "set style data lines\n";
+
+	if( !title.empty() ) {
+		config << "set title '" << title << "'\n";
+	}
+
+	config << "plot";
+
+	unsigned long max = unifyData();
+
+	auto xtics_it = data.find( XTIC );
+
+	std::string dataFileName = format( "%s.dat", data_file );
+
+	config << " '" << dataFileName << "' ";
+
+	int dataCounter = 1;
+
+	for( auto & pair : data )
+	{
+		if( pair.first == XTIC ) {
+			continue;
+		}
+		std::string title = pair.first;
+		dataCounter++;
+
+		if( dataCounter > 2 ) {
+			config << ", \"\" ";
+		}
+
+		config << " using 1:" << dataCounter << " title '" << title << "' ";
+	}
+
+	std::ofstream fdata( dataFileName.c_str(), std::ios_base::trunc );
+
+	for( unsigned long i = 0; i < max; i++ )
+	{
+		fdata << xtics_it->second[i];
+		for( auto & pair : data )
+		{
+			if( pair.first == XTIC ) {
+				continue;
+			}
+
+			fdata << "," << pair.second[i];
+		}
+
+		fdata << "\n";
+	}
+
+	config << '\n';
+
+	config.close();
+	fdata.close();
+
+	system( format("gnuplot '%s'", df ).c_str() );
+}
+
+

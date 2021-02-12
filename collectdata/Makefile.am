@@ -12,7 +12,8 @@ collectdata_SOURCES=\
 		FilterDay.cc \
 		FilterString.cc \
 		GenGnuPlotData.cc \
-		Gen24HoursPlot.cc
+		Gen24HoursPlot.cc \
+		GenXDaysPlot.cc 
 
 
 AM_CPPFLAGS = -I$(top_srcdir)/tools \

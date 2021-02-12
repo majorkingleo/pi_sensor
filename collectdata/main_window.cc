@@ -17,6 +17,8 @@
 #include "FXPNGImage.h"
 #include "FXJPGImage.h"
 #include "Gen24HoursPlot.h"
+#include "GenXDaysPlot.h"
+#include "cppdir.h"
 
 using namespace Tools;
 
@@ -25,6 +27,7 @@ FXDEFMAP(MainWindow) MainWindowMap[]={
 		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_DATA_TIMER,MainWindow::onDataTimeout),
 		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_MINMAX_DATA_TIMER,MainWindow::onMinMaxDataTimeout),
 		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_LAST24_HOUR_TIMER,MainWindow::onLast24HourTimeout),
+		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_LAST14_DAYS_TIMER,MainWindow::onLast14DaysTimeout),
 };
 
 FXIMPLEMENT( MainWindow, FXMainWindow, MainWindowMap, ARRAYNUMBER( MainWindowMap));
@@ -36,7 +39,9 @@ MainWindow::MainWindow(FXApp *a)
 	humidity_inside(0),
 	degree_outside(0),
 	humidity_outside(0),
-	lastDataRecord(0)
+	lastDataRecord(0),
+	IMAGE_FILE_LAST24_HOURS("dataLast24Hours.png"),
+	IMAGE_FILE_LAST14_DAYS("dataLast14Days.png")
 {
 	// Tooltip
 	new FXToolTip(getApp());
@@ -145,12 +150,17 @@ MainWindow::MainWindow(FXApp *a)
 
 	// First item is a list
 	tab3=new ThemeTabItem(tabbook,"&Temp last 24h",NULL);
-
 	contents_temp_last24 = new FXVerticalFrame(tabbook,FRAME_RAISED);
 
 	FXComposite *fdata_temp_last24 = new FXHorizontalFrame(contents_temp_last24, LAYOUT_FILL_Y|LAYOUT_FILL_X);
+	imageview_last24hours=new FXImageView(fdata_temp_last24,NULL,NULL,0,LAYOUT_FILL_X|LAYOUT_FILL_Y);
 
-	imageview=new FXImageView(fdata_temp_last24,NULL,NULL,0,LAYOUT_FILL_X|LAYOUT_FILL_Y);
+
+	tab3=new ThemeTabItem(tabbook,"&Temp last 14d",NULL);
+	contents_temp_last14days = new FXVerticalFrame(tabbook,FRAME_RAISED);
+
+	FXComposite *fdata_temp_last14days = new FXHorizontalFrame(contents_temp_last14days, LAYOUT_FILL_Y|LAYOUT_FILL_X);
+	imageview_last14days=new FXImageView(fdata_temp_last14days,NULL,NULL,0,LAYOUT_FILL_X|LAYOUT_FILL_Y);
 }
 
 void MainWindow::createDataFields( FXComposite *fdata, const char *title, FXDataTarget *degree_target,  FXDataTarget *humidity_target )
@@ -194,7 +204,16 @@ void MainWindow::create()
    getApp()->addTimeout(this,ID_CLOCK_TIMER,0);
    getApp()->addTimeout(this,ID_DATA_TIMER,0);
    getApp()->addTimeout(this,ID_MINMAX_DATA_TIMER,1000);
+
+   loadIfExists( IMAGE_FILE_LAST24_HOURS, imageview_last24hours);
    getApp()->addTimeout(this,ID_LAST24_HOUR_TIMER,2000);
+
+
+   if( loadIfExists( IMAGE_FILE_LAST14_DAYS, imageview_last14days) ) {
+	   getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,20000);
+   } else {
+	   getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,2500);
+   }
 
    FXMainWindow::create();
 
@@ -416,7 +435,7 @@ void MainWindow::max( FXint & value, float & rec_value )
 	value = std::max( value, static_cast<FXint>(rec_value) );
 }
 
-bool MainWindow::loadImage(const FXString& file)
+bool MainWindow::loadImage(const FXString& file, FXImageView *imageview)
 {
 	FXString ext=FXPath::extension(file);
 	FXImage *img=NULL;
@@ -544,10 +563,9 @@ long MainWindow::onLast24HourTimeout(FXObject*,FXSelector,void*)
 
 	Gen24HoursPlot gen;
 
-	const char * imageFile = "dataLast24Hours.png";
 	const char * dataFile = "dataLast24Hours";
 
-	gen.setImageFileName( imageFile );
+	gen.setImageFileName( IMAGE_FILE_LAST24_HOURS );
 	gen.setDataFileName( dataFile );
 	gen.setTitle( "Temperatures Last 24 Hours");
 
@@ -567,11 +585,105 @@ long MainWindow::onLast24HourTimeout(FXObject*,FXSelector,void*)
 	gen.setXDescriptionValues( time_stamps );
 	gen.create();
 
-	loadImage(imageFile);
+	loadImage( IMAGE_FILE_LAST24_HOURS.c_str(), imageview_last24hours);
 
 	// Reset timer for next time
 	getApp()->addTimeout(this,ID_LAST24_HOUR_TIMER,1000*5*60);
 	return 1;
+}
+
+
+
+long MainWindow::onLast14DaysTimeout(FXObject*,FXSelector,void*)
+{
+	CSVUtil csv_util( DATA_FILE_NAME );
+
+	if( !csv_util ) {
+		std::cerr << "cannot open file " << "temperatures.csv" << std::endl;
+	}
+
+	time_t start_at = time(0)-24*60*60*14;
+	time_t now = time(0);
+
+	FilterDataRecords data_filter;
+	data_filter.setSeekdir(FilterDataRecords::SEEKDIR_BACKWARDS);
+	data_filter.setStrategy(FilterDataRecords::STRATEGY_ANY_FILTERS_IS_MATCHING);
+
+	for( time_t x = start_at; x < now; x += 24*60*60 )
+	{
+		data_filter.addFilter( new FilterDay( x ) );
+	}
+
+	auto res = data_filter.filter(csv_util);
+
+	int count = 0;
+
+	std::list<DataRecord> entries;
+
+	for( auto csv_line : res )
+	{
+		entries.push_back( DataRecord( csv_line ) );
+	}
+
+	entries.sort(DataRecord::sort_by_time_asc());
+
+	count = 0;
+
+	auto it_begin_with_time = entries.end();
+
+	for( auto it = entries.begin(); it != entries.end(); it++ )
+	{
+		auto & rec = *it;
+
+		if( rec.timestamp < start_at ) {
+			continue;
+		}
+
+		if( it_begin_with_time == entries.end() ) {
+			it_begin_with_time = it;
+		}
+	}
+
+	GenXDaysPlot gen;
+
+	const char * dataFile = "dataLast14Days";
+
+	gen.setImageFileName( IMAGE_FILE_LAST14_DAYS );
+	gen.setDataFileName( dataFile );
+	gen.setTitle( "Temperatures Last 14 Days");
+
+	std::vector<std::string> data_outside;
+	std::vector<std::string> data_inside;
+	std::vector<std::string> time_stamps;
+
+	for( auto it = it_begin_with_time; it != entries.end(); it++ )
+	{
+		data_outside.push_back( x2s(it->degrees_outside) );
+		data_inside.push_back( x2s(it->degrees_inside) );
+		time_stamps.push_back( it->getDateTimeStr( it->timestamp ) );
+	}
+
+	gen.addData( "Outside", data_outside );
+	gen.addData( "Inside", data_inside );
+	gen.setXDescriptionValues( time_stamps );
+	gen.create();
+
+	loadImage(IMAGE_FILE_LAST14_DAYS.c_str(),imageview_last14days);
+
+	// Reset timer for next time
+	getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,1000*5*60);
+	return 1;
+}
+
+bool MainWindow::loadIfExists( const std::string & file, FXImageView *imageview )
+{
+	CppDir::File f( file.c_str() );
+
+	if( f.is_valid() ) {
+		return loadImage(file.c_str(),imageview);
+	}
+
+	return false;
 }
 
 

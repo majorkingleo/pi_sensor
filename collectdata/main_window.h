@@ -57,9 +57,11 @@ protected:
 	FXVerticalFrame*   contents_currentdata;
 	FXVerticalFrame*   contents_min_max;
 	FXVerticalFrame*   contents_temp_last24;
+	FXVerticalFrame*   contents_temp_last14days;
 	FXLabel*		   clock;
 	FXLabel*		   dataset_date_and_time;
-	FXImageView*	   imageview;
+	FXImageView*	   imageview_last24hours;
+	FXImageView*	   imageview_last14days;
 
 	FXDataTarget       degree_inside_target;
 	FXint	           degree_inside;
@@ -83,6 +85,9 @@ protected:
 
 	MinMax	   		   min_max[2][2];
 
+	std::string 	   IMAGE_FILE_LAST24_HOURS;
+	std::string 	   IMAGE_FILE_LAST14_DAYS;
+
 	MainWindow() {}
 
 public:
@@ -92,6 +97,7 @@ public:
 		ID_DATA_TIMER,
 		ID_MINMAX_DATA_TIMER,
 		ID_LAST24_HOUR_TIMER,
+		ID_LAST14_DAYS_TIMER,
 	};
 
 public:
@@ -108,6 +114,7 @@ public:
 	long onDataTimeout(FXObject*,FXSelector,void*);
 	long onMinMaxDataTimeout(FXObject*,FXSelector,void*);
 	long onLast24HourTimeout(FXObject*,FXSelector,void*);
+	long onLast14DaysTimeout(FXObject*,FXSelector,void*);
 
 protected:
 	void createDataFields( FXComposite *fdata, const char *title, FXDataTarget *degree_target,  FXDataTarget *humidity_target );
@@ -118,7 +125,8 @@ protected:
 	void min( FXint & value, float & rec_value );
 	void max( FXint & value, float & rec_value );
 
-	bool loadImage(const FXString& file);
+	bool loadImage(const FXString& file, FXImageView *imageview );
+	bool loadIfExists( const std::string & file, FXImageView *imageview );
 };
 
 
