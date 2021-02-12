@@ -671,7 +671,7 @@ long MainWindow::onLast14DaysTimeout(FXObject*,FXSelector,void*)
 	loadImage(IMAGE_FILE_LAST14_DAYS.c_str(),imageview_last14days);
 
 	// Reset timer for next time
-	getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,1000*5*60);
+	getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,1000*60*60);
 	return 1;
 }
 
