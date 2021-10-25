@@ -92,7 +92,7 @@ while True:
        print( error )
        traceback.print_exc() 
        print( "trying to reset the sensor")
-       watchdog.reset()
+       watchdog.reset( wait_time = 30 )
        time.sleep( 20 )	# wait until the sensor comes up again
        continue
 
