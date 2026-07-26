@@ -16,3 +16,7 @@ collectdata
 .cproject
 .project
 .settings
+*.o
+*.a
+.deps
+.dirstamp
