@@ -7,7 +7,6 @@
 #include "DataRecord.h"
 #include <errno.h>
 #include <string.h>
-#include <cpp_util.h>
 #include <format.h>
 #include <time.h>
 #include <debug.h>
@@ -27,7 +26,7 @@ DataRecord::DataRecord( const std::vector<std::string> & rec )
   humidity_outside(0.0)
 {
 	if( !parse( rec ) ) {
-		throw REPORT_EXCEPTION( "cannot parse records" );
+		throw STDERR_EXCEPTION( "cannot parse records" );
 	}
 }
 
@@ -36,7 +35,7 @@ std::string DataRecord::getDateStr( time_t t )
 	struct tm *ptm = localtime( &t );
 
 	if( ptm == NULL ) {
-		throw REPORT_EXCEPTION( format( "localtime failed! %s", strerror(errno) ) );
+		throw STDERR_EXCEPTION( format( "localtime failed! %s", strerror(errno) ) );
 	}
 
 	struct tm tm = *ptm;
@@ -52,7 +51,7 @@ std::string DataRecord::getTimeStr( time_t t )
 	struct tm *ptm = localtime( &t );
 
 	if( ptm == NULL ) {
-		throw REPORT_EXCEPTION( format( "localtime failed! %s", strerror(errno) ) );
+		throw STDERR_EXCEPTION( format( "localtime failed! %s", strerror(errno) ) );
 	}
 
 	struct tm tm = *ptm;
@@ -68,7 +67,7 @@ std::string DataRecord::getDateTimeStr( time_t t )
 	struct tm *ptm = localtime( &t );
 
 	if( ptm == NULL ) {
-		throw REPORT_EXCEPTION( format( "localtime failed! %s", strerror(errno) ) );
+		throw STDERR_EXCEPTION( format( "localtime failed! %s", strerror(errno) ) );
 	}
 
 	struct tm tm = *ptm;

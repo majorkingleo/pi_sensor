@@ -30,4 +30,35 @@ AC_PROG_INSTALL
 CXX_FLAGS_CHECK([-std=c++11])
 CXX_FLAGS_CHECK([-pthread])
 
+
+AC_ARG_WITH([fox16],
+  [AS_HELP_STRING([--with-fox16],[use FOX-Toolkit 1.6])],
+  [],
+  [with_fox16=no]
+)
+
+AC_ARG_WITH([fox17],
+  [AS_HELP_STRING([--with-fox17],[use FOX-Toolkit 1.7])],
+  [],
+  [with_fox17=no]
+)
+
+AS_IF([test "x$with_fox16" != "xno"],
+    [PKG_CHECK_MODULES([LIBFOX], [fox16],[FOX16="yes"],[FOX16="no"])]
+)
+
+AS_IF([test "x$with_fox17" != "xno"],
+    [PKG_CHECK_MODULES([LIBFOX], [fox17],[FOX17="yes"],[FOX17="no"])]
+)
+
+AS_IF([test "x${FOX16}x${FOX17}" == "xx" ],
+    PKG_CHECK_MODULES([LIBFOX], [fox], [],
+        [PKG_CHECK_MODULES([LIBFOX], [fox17], [],
+            [PKG_CHECK_MODULES([LIBFOX], fox16 )]
+        )]
+    )
+)
+
+
+
 AC_OUTPUT

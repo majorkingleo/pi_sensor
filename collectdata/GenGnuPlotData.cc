@@ -1,6 +1,6 @@
 #include "GenGnuPlotData.h"
 #include <fstream>
-#include <cpp_utils.h>
+#include <format.h>
 
 using namespace Tools;
 
@@ -32,7 +32,7 @@ void GenGnuPlotData::create()
 		std::string title = pair.first;
 		auto & vData = pair.second;
 
-		std::string dataFileName = format( "%s%d.dat", data_file, dataFileCounter++ );
+		std::string dataFileName = Tools::format( "%s%d.dat", data_file, dataFileCounter++ );
 
 		config << " '" << dataFileName << "' with lines ";
 

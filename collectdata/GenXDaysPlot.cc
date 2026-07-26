@@ -1,6 +1,6 @@
 #include "GenXDaysPlot.h"
 #include <fstream>
-#include <cpp_utils.h>
+#include <format.h>
 
 using namespace Tools;
 
@@ -29,7 +29,7 @@ void GenXDaysPlot::create()
 
 	auto xtics_it = data.find( XTIC );
 
-	std::string dataFileName = format( "%s.dat", data_file );
+	std::string dataFileName = Tools::format( "%s.dat", data_file );
 
 	config << " '" << dataFileName << "' ";
 

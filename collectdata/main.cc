@@ -7,7 +7,6 @@
 #include "string_utils.h"
 #include "xml.h"
 #include "format.h"
-#include "cpp_util.h"
 #include <arg.h>
 #include "file_option.h"
 #include "OutDebug.h"
@@ -17,6 +16,7 @@
 #include "FilterString.h"
 #include "FilterDay.h"
 #include "Gen24HoursPlot.h"
+#include <stderr_exception.h>
 
 using namespace Tools;
 
@@ -60,7 +60,7 @@ void printAllRecords( const std::string & file )
 	CSVUtil csv_util( file );
 
 	if( !csv_util ) {
-		throw REPORT_EXCEPTION( format( "Cannot open file %s ", file) );
+		throw STDERR_EXCEPTION( Tools::format( "Cannot open file %s ", file) );
 	}
 
 	std::vector<std::string> record = csv_util.getLastLine();
@@ -69,7 +69,7 @@ void printAllRecords( const std::string & file )
 
 	for( auto it = csv_util.begin(); it != csv_util.end(); it++ )
 	{
-		std::cout << format( "%04d:", ++count );
+		std::cout << Tools::format( "%04d:", ++count );
 
 		for( std::string & rec : *it )
 		{
@@ -85,7 +85,7 @@ void printAllRecords( const std::string & file, const std::string & filter )
 	CSVUtil csv_util( file );
 
 	if( !csv_util ) {
-		throw REPORT_EXCEPTION( format( "Cannot open file %s ", file) );
+		throw STDERR_EXCEPTION( Tools::format( "Cannot open file %s ", file) );
 	}
 
 	FilterDataRecords data_filter;
@@ -96,7 +96,7 @@ void printAllRecords( const std::string & file, const std::string & filter )
 	int count = 0;
 	for( auto csv_line : res )
 	{
-		std::cout << format( "%04d:", ++count ) << csv_line << std::endl;
+		std::cout << Tools::format( "%04d:", ++count ) << csv_line << std::endl;
 	}
 }
 
@@ -105,7 +105,7 @@ void printAllDateRecords( const std::string & file, time_t when )
 	CSVUtil csv_util( file );
 
 	if( !csv_util ) {
-		throw REPORT_EXCEPTION( format( "Cannot open file %s ", file) );
+		throw STDERR_EXCEPTION( Tools::format( "Cannot open file %s ", file) );
 	}
 
 	FilterDataRecords data_filter;
@@ -116,7 +116,7 @@ void printAllDateRecords( const std::string & file, time_t when )
 	int count = 0;
 	for( auto csv_line : res )
 	{
-		std::cout << format( "%04d:", ++count ) << csv_line << std::endl;
+		std::cout << Tools::format( "%04d:", ++count ) << csv_line << std::endl;
 	}
 }
 
@@ -126,14 +126,14 @@ void printAllRecordsReverse( const std::string & file )
 	CSVUtil csv_util( file );
 
 	if( !csv_util ) {
-		throw REPORT_EXCEPTION( format( "Cannot open file %s ", file) );
+		throw STDERR_EXCEPTION( Tools::format( "Cannot open file %s ", file) );
 	}
 
 	int count = 0;
 
 	for( auto it = csv_util.rbegin(); it != csv_util.rend(); it++ )
 	{
-		std::cout << format( "%04d:", ++count );
+		std::cout << Tools::format( "%04d:", ++count );
 
 		for( std::string & rec : *it )
 		{
@@ -149,7 +149,7 @@ void printAllLast24( const std::string & file, bool generate_gnuplot_data )
 	CSVUtil csv_util( file );
 
 	if( !csv_util ) {
-		throw REPORT_EXCEPTION( format( "Cannot open file %s ", file) );
+		throw STDERR_EXCEPTION( Tools::format( "Cannot open file %s ", file) );
 	}
 
 	DataRecord rec(csv_util.getLastLine());
@@ -192,7 +192,7 @@ void printAllLast24( const std::string & file, bool generate_gnuplot_data )
 		}
 
 
-		std::cout << format( "%04d:", ++count ) << rec << std::endl;
+		std::cout << Tools::format( "%04d:", ++count ) << rec << std::endl;
 	}
 
 	if( generate_gnuplot_data )
@@ -247,7 +247,7 @@ int main( int argc, char **argv )
 
   Arg::FlagOption o_version( "v" );
   o_version.addName( "version" );
-  o_version.setDescription( format( "Show %s version number", PACKAGE_NAME ) );
+  o_version.setDescription( Tools::format( "Show %s version number", PACKAGE_NAME ) );
   oc_info.addOptionR( &o_version );
 
 
@@ -319,7 +319,7 @@ int main( int argc, char **argv )
     {
       if( o_version.getState() )
       {
-    	  std::cout << format("%s version %s\n", argv[0], VERSION);
+    	  std::cout << Tools::format("%s version %s\n", argv[0], VERSION);
     	  return 0;
       } else {
     	  usage(argv[0]);

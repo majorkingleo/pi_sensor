@@ -8,7 +8,8 @@
 #include "thread.h"
 #include <errno.h>
 #include <string.h>
-#include <cpp_util.h>
+#include <format.h>
+#include <stderr_exception.h>
 
 #ifdef TOOLS_USE_THREADS
 
@@ -53,7 +54,7 @@ Thread::Mutex::Mutex()
 #else 
     if( pthread_mutex_init( &mutex, 0 ) != 0 )
     {
-    	throw new REPORT_EXCEPTION( std::string("cannot init mutex ") + strerror(errno));
+    	throw new STDERR_EXCEPTION( std::string("cannot init mutex ") + strerror(errno));
     }
 #endif
 }
@@ -114,7 +115,7 @@ void Thread::start()
 #else
     int rv = pthread_create( &thread, 0, run_thread, this );
     if( rv != 0 ) {
-         throw REPORT_EXCEPTION( format("error at pthread_create. rv: %d %s", rv, strerror(errno)) );
+         throw STDERR_EXCEPTION( format("error at pthread_create. rv: %d %s", rv, strerror(errno)) );
     }
 #endif
 
@@ -232,7 +233,7 @@ void Thread::join()
 #else
 	int rv = pthread_join( thread, NULL );
 	if( rv != 0 ) {
-		throw REPORT_EXCEPTION( format("error at pthread_create. rv: %d %s", rv, strerror(errno)) );
+		throw STDERR_EXCEPTION( format("error at pthread_create. rv: %d %s", rv, strerror(errno)) );
 	}
 #endif	
 }

@@ -20,7 +20,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/tools \
 	-I$(top_srcdir)/cpputils/cpputilsshared  \
 	-I$(top_srcdir)/cpputils/cpputilsshared/cpputilsformat \
 	-DNOWAMAS \
-	-std=c++11 \
+	-std=c++20 \
 	`pkgconf --cflags fox` \
 	-pthread
 
@@ -30,13 +30,7 @@ noinst_LIBRARIES=tools/libtools.a \
 
 tools_libtools_a_SOURCES= \
 	tools/arg.cpp \
-	tools/database.cpp \
-	tools/db.cpp \
-	tools/dbi.cpp \
 	tools/debug.cpp \
-	tools/mysql_db.cpp \
-	tools/odbc_db.cpp \
-	tools/oracle_db.cpp \
 	tools/pairs.cpp \
 	tools/theme.cpp \
 	tools/thread.cpp
@@ -45,17 +39,20 @@ tools_libtools_a_SOURCES= \
 cpputils_cpputilsshared_libcpputilsshared_a_SOURCES= \
 		cpputils/cpputilsshared/backtrace.cc \
 		cpputils/cpputilsshared/cppdir.cc \
-		cpputils/cpputilsshared/leoini.cc \
-		cpputils/cpputilsshared/logtool2.cc \
+		cpputils/cpputilsshared/leoini.cc \		
 		cpputils/cpputilsshared/string_utils.cc \
-		cpputils/cpputilsshared/vec_utils.cc \
-		cpputils/cpputilsshared/xml.cc
+		cpputils/cpputilsshared/xml.cc \
+		cpputils/cpputilsshared/stderr_exception.cc
 
 
 cpputils_cpputilsshared_cpputilsformat_libcpputilsformat_a_SOURCES= \
 	cpputils/cpputilsshared/cpputilsformat/format1.cc \
-	cpputils/cpputilsshared/cpputilsformat/format2.cc
+	cpputils/cpputilsshared/cpputilsformat/format2.cc \
+	cpputils/cpputilsshared/cpputilsformat/cformat.cc
 
 collectdata_LDADD = tools/libtools.a cpputils/cpputilsshared/libcpputilsshared.a cpputils/cpputilsshared/cpputilsformat/libcpputilsformat.a
 
-collectdata_LDFLAGS=`pkgconf --libs fox` -pthread
+collectdata_LDFLAGS=-pthread
+
+LIBS= \ 
+    $(LIBFOX_LIBS)
