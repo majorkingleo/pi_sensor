@@ -39,7 +39,7 @@ tools_libtools_a_SOURCES= \
 cpputils_cpputilsshared_libcpputilsshared_a_SOURCES= \
 		cpputils/cpputilsshared/backtrace.cc \
 		cpputils/cpputilsshared/cppdir.cc \
-		cpputils/cpputilsshared/leoini.cc \		
+		cpputils/cpputilsshared/leoini.cc \
 		cpputils/cpputilsshared/string_utils.cc \
 		cpputils/cpputilsshared/xml.cc \
 		cpputils/cpputilsshared/stderr_exception.cc
@@ -54,5 +54,5 @@ collectdata_LDADD = tools/libtools.a cpputils/cpputilsshared/libcpputilsshared.a
 
 collectdata_LDFLAGS=-pthread
 
-LIBS= \ 
+LIBS= \
     $(LIBFOX_LIBS)

@@ -11,6 +11,7 @@
 #include <time.h>
 #include <debug.h>
 #include <string_utils.h>
+#include <stderr_exception.h>
 
 using namespace Tools;
 
@@ -35,7 +36,7 @@ std::string DataRecord::getDateStr( time_t t )
 	struct tm *ptm = localtime( &t );
 
 	if( ptm == NULL ) {
-		throw STDERR_EXCEPTION( format( "localtime failed! %s", strerror(errno) ) );
+		throw STDERR_EXCEPTION( Tools::format( "localtime failed! %s", strerror(errno) ) );
 	}
 
 	struct tm tm = *ptm;
@@ -51,7 +52,7 @@ std::string DataRecord::getTimeStr( time_t t )
 	struct tm *ptm = localtime( &t );
 
 	if( ptm == NULL ) {
-		throw STDERR_EXCEPTION( format( "localtime failed! %s", strerror(errno) ) );
+		throw STDERR_EXCEPTION( Tools::format( "localtime failed! %s", strerror(errno) ) );
 	}
 
 	struct tm tm = *ptm;
@@ -67,7 +68,7 @@ std::string DataRecord::getDateTimeStr( time_t t )
 	struct tm *ptm = localtime( &t );
 
 	if( ptm == NULL ) {
-		throw STDERR_EXCEPTION( format( "localtime failed! %s", strerror(errno) ) );
+		throw STDERR_EXCEPTION( Tools::format( "localtime failed! %s", strerror(errno) ) );
 	}
 
 	struct tm tm = *ptm;
