@@ -64,6 +64,9 @@ body {
   /* No width cap: the panels and the chart follow the browser window. */
   width: 100%;
   min-width: 0;
+  /* Full viewport height, so the chart panel can take all the space that the
+     collapsed panels leave over. */
+  min-height: 100dvh;
   padding: 16px;
 }
 
@@ -156,6 +159,49 @@ body {
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.panel-head-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  /* Let the title group shrink instead of pushing the collapse button onto a
+     line of its own on narrow screens. */
+  flex: 1 1 auto;
+}
+
+/* Collapse toggle: a small chevron that turns while the panel is folded away. */
+.btn-collapse {
+  flex: 0 0 auto;
+  padding: 1px 8px 3px;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.btn-collapse:hover {
+  color: var(--accent);
+}
+
+/* The collapsible panels keep their chevron on the first line: the title group
+   wraps internally instead of pushing the button down. */
+.panel-collapsible > .panel-head {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+.panel[data-collapsed='true'] > .panel-head {
+  margin-bottom: 0;
+}
+
+.panel[data-collapsed='true'] .collapsible {
+  display: none;
+}
+
+.panel[data-collapsed='true'] .btn-collapse {
+  transform: rotate(-90deg);
 }
 
 .panel-head h2 {
@@ -374,9 +420,19 @@ body {
   background-repeat: repeat-x;
 }
 
+/* The chart panel is the only one that grows: every pixel the two upper panels
+   give up when they are collapsed ends up here. */
+.panel-chart {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .chart-host {
   width: 100%;
-  height: clamp(280px, 46vh, 520px);
+  flex: 1 1 260px;
+  min-height: 260px;
 }
 
 .chart-host .u-over {

@@ -73,6 +73,12 @@ const TICK_FORMATS = {
   seconds: new Intl.DateTimeFormat('de-AT', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
   time: new Intl.DateTimeFormat('de-AT', { hour: '2-digit', minute: '2-digit' }),
   day: new Intl.DateTimeFormat('de-AT', { day: '2-digit', month: '2-digit' }),
+  dayTime: new Intl.DateTimeFormat('de-AT', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }),
   month: new Intl.DateTimeFormat('de-AT', { month: 'short', year: 'numeric' }),
 };
 
@@ -82,16 +88,21 @@ const DAY = 86400;
 const AXIS_GLYPH_WIDTH = 6.5;
 
 /**
- * Format one x axis tick depending on how far apart the ticks are.
+ * Format one x axis tick.
  *
- * Wide windows (a full year or more) switch to "month + year" labels: with a
- * year view a bare "09.11." would not tell which year it belongs to.
+ * The choice depends on both the distance between ticks and the visible span:
+ * a date-only label repeats itself as soon as the ticks are closer than a day
+ * (a wide screen over 14 days gets a tick every 12 hours), so those ticks get
+ * the date *and* the time. Wide windows (a year or more) switch to
+ * "month + year", otherwise two ticks from different years would look alike.
  */
-function formatTick(seconds: number, increment: number, wideSpan: boolean): string {
+function formatTick(seconds: number, increment: number, wideSpan: boolean, span: number): string {
   const date = new Date(seconds * 1000);
   if (increment < 60) return TICK_FORMATS.seconds.format(date);
-  if (increment < 12 * 3600) return TICK_FORMATS.time.format(date);
+  // Zoomed into a single day: the time alone is unambiguous.
+  if (span <= 1.2 * DAY) return TICK_FORMATS.time.format(date);
   if (wideSpan && increment >= 12 * 3600) return TICK_FORMATS.month.format(date);
+  if (increment < DAY) return TICK_FORMATS.dayTime.format(date);
   if (increment < 45 * DAY) return TICK_FORMATS.day.format(date);
   return TICK_FORMATS.month.format(date);
 }
@@ -238,7 +249,9 @@ export class TimeSeriesChart {
       values: (u, splits, _axisIdx, space, increment) => {
         const span = (u.scales.x?.max ?? 0) - (u.scales.x?.min ?? 0);
         const wideSpan = span > 300 * DAY;
-        const labels = splits.map((value) => (value == null ? '' : formatTick(value, increment, wideSpan)));
+        const labels = splits.map((value) =>
+          value == null ? '' : formatTick(value, increment, wideSpan, span),
+        );
 
         // uPlot sized the tick distance for its own (shorter) labels. Our German
         // "März 2026" is wider, so on narrow screens every n-th label is dropped

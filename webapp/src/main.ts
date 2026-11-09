@@ -22,6 +22,7 @@ import type {
 import { FIELDS, fieldMeta } from './types';
 
 const PRESET_KEY = 'pi-sensor-preset';
+const COLLAPSED_KEY = 'pi-sensor-collapsed';
 const REFRESH_MS = 60_000;
 const STATS_HOURS = 24;
 
@@ -241,6 +242,44 @@ function storePreset(id: string): void {
 }
 
 // ---------------------------------------------------------------------------
+// Collapsible panels
+// ---------------------------------------------------------------------------
+
+/** Ids of the panels that are currently folded away. */
+function loadCollapsed(): Set<string> {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_KEY);
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return new Set(parsed.filter((value): value is string => typeof value === 'string'));
+      }
+    }
+  } catch {
+    // Corrupt or unavailable storage: start expanded.
+  }
+  return new Set();
+}
+
+function storeCollapsed(collapsed: ReadonlySet<string>): void {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...collapsed]));
+  } catch {
+    // Best effort only.
+  }
+}
+
+/** One panel that can be folded away via the chevron in its head. */
+interface CollapsiblePanel {
+  /** Key used in localStorage. */
+  key: string;
+  panel: HTMLElement;
+  button: HTMLButtonElement;
+  /** Human readable name for the tooltip. */
+  label: string;
+}
+
+// ---------------------------------------------------------------------------
 // Dashboard
 // ---------------------------------------------------------------------------
 
@@ -254,6 +293,8 @@ class Dashboard {
   private years: readonly YearInfo[] = [];
   /** Current calendar year according to the database clock. */
   private currentYear = new Date().getFullYear();
+  /** Panels the user folded away (persisted). */
+  private readonly collapsed = loadCollapsed();
 
   private readonly ui = {
     status: byId<HTMLSpanElement>('status'),
@@ -287,6 +328,21 @@ class Dashboard {
       void this.reload();
     });
 
+    this.setupCollapsible([
+      {
+        key: 'current',
+        panel: byId<HTMLElement>('panel-current'),
+        button: byId<HTMLButtonElement>('btn-collapse-current'),
+        label: 'Aktuelle Werte',
+      },
+      {
+        key: 'stats',
+        panel: byId<HTMLElement>('panel-stats'),
+        button: byId<HTMLButtonElement>('btn-collapse-stats'),
+        label: 'Letzte 24 Stunden',
+      },
+    ]);
+
     this.ui.yearSelect.addEventListener('change', () => {
       const value = this.ui.yearSelect.value;
       if (value === '') {
@@ -316,6 +372,35 @@ class Dashboard {
     if (this.timer !== null) window.clearInterval(this.timer);
     this.timer = null;
     this.chart.destroy();
+  }
+
+  // -- collapsible panels ---------------------------------------------------
+
+  /**
+   * Wire the collapse toggles. The chart panel has no toggle of its own: it is
+   * the flex child that absorbs whatever height the folded panels release, so
+   * the chart grows automatically (its ResizeObserver redraws it).
+   */
+  private setupCollapsible(panels: readonly CollapsiblePanel[]): void {
+    const apply = (panel: CollapsiblePanel): void => {
+      const collapsed = this.collapsed.has(panel.key);
+      panel.panel.dataset.collapsed = collapsed ? 'true' : 'false';
+      panel.button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      panel.button.title = collapsed ? `${panel.label} ausklappen` : `${panel.label} einklappen`;
+    };
+
+    for (const panel of panels) {
+      apply(panel);
+      panel.button.addEventListener('click', () => {
+        if (this.collapsed.has(panel.key)) {
+          this.collapsed.delete(panel.key);
+        } else {
+          this.collapsed.add(panel.key);
+        }
+        apply(panel);
+        storeCollapsed(this.collapsed);
+      });
+    }
   }
 
   // -- rendering ------------------------------------------------------------

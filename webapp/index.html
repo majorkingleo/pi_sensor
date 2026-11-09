@@ -29,23 +29,43 @@
 
       <p id="error" class="error" hidden></p>
 
-      <section class="panel">
+      <section class="panel panel-collapsible" id="panel-current">
         <div class="panel-head">
-          <h2>Aktuelle Werte</h2>
-          <span id="current-time" class="muted"></span>
+          <div class="panel-head-main">
+            <h2>Aktuelle Werte</h2>
+            <span id="current-time" class="muted"></span>
+          </div>
+          <button
+            id="btn-collapse-current"
+            class="btn btn-collapse"
+            type="button"
+            aria-expanded="true"
+            aria-controls="cards-current"
+            title="Aktuelle Werte einklappen"
+          >▾</button>
         </div>
-        <div id="cards-current" class="cards"></div>
+        <div id="cards-current" class="cards collapsible"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel panel-collapsible" id="panel-stats">
         <div class="panel-head">
-          <h2>Letzte 24 Stunden</h2>
-          <span class="muted">Minimum · Durchschnitt · Maximum</span>
+          <div class="panel-head-main">
+            <h2>Letzte 24 Stunden</h2>
+            <span class="muted">Minimum · Durchschnitt · Maximum</span>
+          </div>
+          <button
+            id="btn-collapse-stats"
+            class="btn btn-collapse"
+            type="button"
+            aria-expanded="true"
+            aria-controls="stats-24h"
+            title="Letzte 24 Stunden einklappen"
+          >▾</button>
         </div>
-        <div id="stats-24h" class="stats"></div>
+        <div id="stats-24h" class="stats collapsible"></div>
       </section>
 
-      <section class="panel panel-chart">
+      <section class="panel panel-chart" id="panel-chart">
         <div class="panel-head">
           <h2>Verlauf</h2>
           <div id="chart-legend" class="legend"></div>
