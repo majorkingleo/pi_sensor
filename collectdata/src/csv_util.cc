@@ -60,7 +60,22 @@ std::vector<std::string> CSVUtil::getPrevLine()
 
 std::vector<std::string> CSVUtil::getLine()
 {
-	return split_simple( in.readLine(), ";" );
+	const std::string line = in.readLine();
+
+	const auto parts = split_string_view( std::string_view( line ), ";" );
+
+	// split_string_view keeps empty elements; split_and_strip_simple_view dropped
+	// them. Preserve the suppression of empty fields.
+	std::vector<std::string> fields;
+	fields.reserve( parts.size() );
+
+	for( const auto & part : parts ) {
+		if( !part.empty() ) {
+			fields.emplace_back( part.data(), part.size() );
+		}
+	}
+
+	return fields;
 }
 
 CSVUtil::iterator CSVUtil::begin()
