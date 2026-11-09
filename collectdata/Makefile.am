@@ -79,6 +79,14 @@ test_csv_util_SOURCES= \
 	src_test/test_datarecord.h \
 	src_test/test_filters.cc \
 	src_test/test_filters.h \
+	src_test/test_colored_output.cc \
+	src_test/test_colored_output.h \
+	src_test/test_colbuilder.cc \
+	src_test/test_colbuilder.h \
+	src_test/test_genplotdata.cc \
+	src_test/test_genplotdata.h \
+	src_test/test_file_option.cc \
+	src_test/test_file_option.h \
 	src_test/test_helpers.h \
 	src/csv_util.cc \
 	src/BufferedFile.cc \
@@ -86,8 +94,11 @@ test_csv_util_SOURCES= \
 	src/FilterDataRecords.cc \
 	src/FilterDay.cc \
 	src/FilterString.cc \
+	src/GenGnuPlotData.cc \
+	src/file_option.cc \
 	src/colored_output.cc \
-	common/TestUtils.h
+	common/TestUtils.h \
+	common/ColBuilder.h
 
 test_csv_util_LDADD = common/libcommon.a \
 	tools/libtools.a \

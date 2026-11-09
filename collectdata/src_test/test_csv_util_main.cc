@@ -6,6 +6,10 @@
 #include "test_csv_util.h"
 #include "test_datarecord.h"
 #include "test_filters.h"
+#include "test_colored_output.h"
+#include "test_colbuilder.h"
+#include "test_genplotdata.h"
+#include "test_file_option.h"
 #include "colored_output.h"
 #include "ColBuilder.h"
 
@@ -66,6 +70,10 @@ int main( int argc, char **argv )
     auto test_cases = test_case_csv_util();
     test_cases.splice( test_cases.end(), test_case_datarecord() );
     test_cases.splice( test_cases.end(), test_case_filters() );
+    test_cases.splice( test_cases.end(), test_case_colored_output() );
+    test_cases.splice( test_cases.end(), test_case_colbuilder() );
+    test_cases.splice( test_cases.end(), test_case_genplotdata() );
+    test_cases.splice( test_cases.end(), test_case_file_option() );
 
     ColBuilder col;
     const int COL_IDX      = col.addCol( "IDX" );
