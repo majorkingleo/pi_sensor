@@ -31,6 +31,12 @@ CXX_FLAGS_CHECK([-std=c++20])
 CXX_FLAGS_CHECK([-pthread])
 
 
+AC_ARG_WITH([fox],
+  [AS_HELP_STRING([--without-fox],[build only import_temperatures, no FOX GUI])],
+  [],
+  [with_fox=yes]
+)
+
 AC_ARG_WITH([fox16],
   [AS_HELP_STRING([--with-fox16],[use FOX-Toolkit 1.6])],
   [],
@@ -51,13 +57,31 @@ AS_IF([test "x$with_fox17" != "xno"],
     [PKG_CHECK_MODULES([LIBFOX], [fox17],[FOX17="yes"],[FOX17="no"])]
 )
 
-AS_IF([test "x${FOX16}x${FOX17}" == "xx" ],
-    PKG_CHECK_MODULES([LIBFOX], [fox], [],
-        [PKG_CHECK_MODULES([LIBFOX], [fox17], [],
-            [PKG_CHECK_MODULES([LIBFOX], fox16 )]
+dnl FOX is optional: the MySQL importer and the tests do not need it, so a
+dnl server build can run without any X11 libraries.
+have_fox=no
+
+AS_IF([test "x$with_fox" != "xno"],
+    [AS_IF([test "x${FOX16}" = "xyes" || test "x${FOX17}" = "xyes"],
+        [have_fox=yes],
+        [PKG_CHECK_MODULES([LIBFOX], [fox],
+            [have_fox=yes],
+            [PKG_CHECK_MODULES([LIBFOX], [fox17],
+                [have_fox=yes],
+                [PKG_CHECK_MODULES([LIBFOX], [fox16],
+                    [have_fox=yes],
+                    [have_fox=no])]
+            )]
         )]
-    )
+    )]
 )
+
+AS_IF([test "x$have_fox" = "xyes"],
+    [AC_MSG_NOTICE([FOX found - building the collectdata GUI])],
+    [AC_MSG_WARN([FOX toolkit not found - only import_temperatures will be built])]
+)
+
+AM_CONDITIONAL([HAVE_FOX], [test "x$have_fox" = "xyes"])
 
 dnl the MySQL importer (import_temperatures) is optional
 AC_ARG_WITH([mysql],

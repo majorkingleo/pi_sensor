@@ -241,6 +241,32 @@ used.)
   a small HTTP server). PHP/Python + Chart.js is less work if preferred.
 - The Pi is never involved at query time.
 
+### Building and running on the server (docker, same host as lotr_analyzer)
+
+`collectdata/` contains the same container layout as `lotr_analyzer`
+(debian:trixie):
+
+| directory | purpose |
+| --- | --- |
+| `build_container/` | g++, automake/autoconf, pkg-config, `libfox-1.6-dev`, `default-libmysqlclient-dev` |
+| `run_container/` | runtime for `import_temperatures`: `libmariadb3`, no compiler, no X11 |
+
+```
+cd collectdata
+git submodule update --init --recursive          # on the host
+./build_container/run_container.sh               # reconfigure + build
+./build_container/run_container.sh make check
+./run_container/run_container.sh                 # run the import
+```
+
+The run container mounts the current directory as `/workspace`,
+`$PI_SENSOR_STAGING` (default `/srv/pi_sensor`), `~/.pi_sensor.ini` and
+`/run/mysqld` (each only if present). It runs with the calling uid/gid, and
+`/etc/passwd` is mounted read-only so `~` in the config resolves.
+
+For a server without X11 use `./reconfigure.sh --without-fox`: FOX is optional
+since `configure` only builds the GUI when the toolkit is found.
+
 ## 5. Security checklist
 
 - MySQL stays bound to `localhost` / not exposed.
