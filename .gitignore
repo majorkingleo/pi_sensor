@@ -1,1 +1,8 @@
 temperatures.csv
+*.dat
+*~
+dataLast14Days.in
+dataLast14Days.png
+dataLast24Hours.in
+dataLast24Hours.png
+

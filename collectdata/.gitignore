@@ -20,3 +20,6 @@ collectdata
 *.a
 .deps
 .dirstamp
+*.in
+*.png
+*.input
