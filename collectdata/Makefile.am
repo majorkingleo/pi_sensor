@@ -16,7 +16,8 @@ collectdata_SOURCES=\
 		GenXDaysPlot.cc \
 		AsyncOutDebug.cc \
 		AsyncFileLogger.cc \
-		logging.cc
+		logging.cc \
+		BufferedFile.cc
 
 
 AM_CPPFLAGS = -I$(top_srcdir)/tools \

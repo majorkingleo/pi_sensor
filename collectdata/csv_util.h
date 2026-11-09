@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include "BufferedFile.h"
 
 class CSVUtil
 {
@@ -98,12 +99,12 @@ public:
 
 protected:
 
-	std::ifstream in;
+	BufferedFile in;
 
 public:
 
 	CSVUtil( const std::string & file );
-	bool operator!() const { return in.operator!(); }
+	bool operator!() const { return !in.is_open(); }
 
 	std::vector<std::string> getLastLine();
 	std::vector<std::string> getPrevLine();
@@ -116,18 +117,18 @@ public:
 	reverse_iterator rend();
 
 	std::fstream::pos_type getCurrentPos() {
-		return in.tellg();
+		return std::fstream::pos_type( in.tell() );
 	}
 
 	void setCurrentPos( std::fstream::pos_type pos ) {
-		in.seekg(pos, std::ios_base::beg);
+		in.seek( std::streamoff( pos ) );
 	}
 
 protected:
-	bool moveToStartOfLine(std::ifstream& fs) const;
-	bool moveToEndOfLine(std::ifstream& fs) const;
-	std::string getLastLineInFile(std::ifstream& fs) const;
-	std::string getPrevLineInFile(std::ifstream& fs) const;
+	bool moveToStartOfLine(BufferedFile& fs);
+	bool moveToEndOfLine(BufferedFile& fs);
+	std::string getLastLineInFile(BufferedFile& fs);
+	std::string getPrevLineInFile(BufferedFile& fs);
 };
 
 

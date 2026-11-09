@@ -19,59 +19,23 @@ CSVUtil::CSVUtil( const std::string & file )
 
 }
 
-bool CSVUtil::moveToStartOfLine(std::ifstream& fs) const
+bool CSVUtil::moveToStartOfLine(BufferedFile& fs)
 {
-	if( fs.tellg() == 0 ) {
-		return true;
-	}
-
-    fs.seekg(-1, std::ios_base::cur);
-    for(long i = fs.tellg(); i >= 0; i--)
-    {
-        if(fs.peek() == '\n')
-        {
-            fs.get();
-            return true;
-        }
-        fs.seekg(i, std::ios_base::beg);
-
-    	if( fs.tellg() == 0 ) {
-    		return true;
-    	}
-
-    }
-    return false;
+	return fs.moveToStartOfLine();
 }
 
-bool CSVUtil::moveToEndOfLine(std::ifstream& fs) const
+bool CSVUtil::moveToEndOfLine(BufferedFile& fs)
 {
-	fs.clear();
-	while( !fs.eof() )
-	{
-		if( fs.get() == '\n' )
-		{
-			return true;
-		}
-	}
-
-	return false;
+	return fs.moveToEndOfLine();
 }
 
-std::string CSVUtil::getLastLineInFile(std::ifstream& fs) const
+std::string CSVUtil::getLastLineInFile(BufferedFile& fs)
 {
-    // Go to the last character before EOF
-    fs.seekg(-1, std::ios_base::end);
-    if (!moveToStartOfLine(fs))
-        return "";
-
-    std::string lastline;
-    getline(fs, lastline);
-    return lastline;
+    return fs.lastLine();
 }
 
 std::vector<std::string> CSVUtil::getLastLine()
 {
-	in.clear();
 	std::string line = getLastLineInFile( in );
 
 	DEBUG( format( "line: %s", line ) );
@@ -79,14 +43,12 @@ std::vector<std::string> CSVUtil::getLastLine()
 	return split_simple( line, ";" );
 }
 
-std::string CSVUtil::getPrevLineInFile(std::ifstream& fs) const
+std::string CSVUtil::getPrevLineInFile(BufferedFile& fs)
 {
     if (!moveToStartOfLine(fs))
         return "";
 
-    std::string line;
-    getline(fs, line);
-    return line;
+    return fs.readLine();
 }
 
 
@@ -98,9 +60,7 @@ std::vector<std::string> CSVUtil::getPrevLine()
 
 std::vector<std::string> CSVUtil::getLine()
 {
-	std::string line;
-	getline(in, line);
-	return split_simple( line, ";" );
+	return split_simple( in.readLine(), ";" );
 }
 
 CSVUtil::iterator CSVUtil::begin()
@@ -110,9 +70,7 @@ CSVUtil::iterator CSVUtil::begin()
 
 CSVUtil::iterator CSVUtil::end()
 {
-	in.seekg(0, std::ios_base::end);
-	std::fstream::pos_type pos = in.tellg();
-	return iterator( this, pos );
+	return iterator( this, std::fstream::pos_type( in.size() ) );
 }
 
 CSVUtil::iterator CSVUtil::iterator::operator++( int amount )
@@ -213,13 +171,15 @@ std::vector<std::string> CSVUtil::iterator::operator*()
 
 CSVUtil::reverse_iterator CSVUtil::rbegin()
 {
-	in.seekg(-1, std::ios_base::end);
+	if( in.size() <= 0 ) {
+		return reverse_iterator( this, -1 );
+	}
+
+	in.seek( in.size() - 1 );
 	moveToStartOfLine( in );
-	std::fstream::pos_type pos = in.tellg();
+	std::fstream::pos_type pos = std::fstream::pos_type( in.tell() );
 
-	in.seekg(0,std::ios_base::end);
-
-	DEBUG( format( "start is at: %d end is at %d", pos,  in.tellg() ) );
+	DEBUG( format( "start is at: %d end is at %d", pos, in.size() ) );
 
 	return reverse_iterator( this, pos );
 }
