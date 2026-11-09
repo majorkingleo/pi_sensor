@@ -6,3 +6,7 @@ dataLast14Days.png
 dataLast24Hours.in
 dataLast24Hours.png
 
+# local build / profiling artifacts
+gmon.out
+tmp/
+

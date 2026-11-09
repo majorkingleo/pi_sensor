@@ -23,3 +23,10 @@ collectdata
 *.in
 *.png
 *.input
+
+# test build artifacts
+test-driver
+test_csv_util
+test-suite.log
+*.log
+*.trs

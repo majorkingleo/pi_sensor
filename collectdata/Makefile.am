@@ -1,28 +1,30 @@
 bin_PROGRAMS=collectdata
 
 collectdata_SOURCES=\
-		file_option.cc\
-		main.cc\
-		OutDebug.cc\
-		colored_output.cc \
-		main_window.cc \
-		csv_util.cc \
-		FilterDataRecords.cc \
-		DataRecord.cc \
-		FilterDay.cc \
-		FilterString.cc \
-		GenGnuPlotData.cc \
-		Gen24HoursPlot.cc \
-		GenXDaysPlot.cc \
-		AsyncOutDebug.cc \
-		AsyncFileLogger.cc \
-		logging.cc \
-		BufferedFile.cc
+		src/file_option.cc\
+		src/main.cc\
+		src/OutDebug.cc\
+		src/colored_output.cc \
+		src/main_window.cc \
+		src/csv_util.cc \
+		src/FilterDataRecords.cc \
+		src/DataRecord.cc \
+		src/FilterDay.cc \
+		src/FilterString.cc \
+		src/GenGnuPlotData.cc \
+		src/Gen24HoursPlot.cc \
+		src/GenXDaysPlot.cc \
+		src/AsyncOutDebug.cc \
+		src/AsyncFileLogger.cc \
+		src/logging.cc \
+		src/BufferedFile.cc
 
 
 AM_CPPFLAGS = -I$(top_srcdir)/tools \
 	-I$(top_srcdir)/cpputils/cpputilsshared  \
 	-I$(top_srcdir)/cpputils/cpputilsshared/cpputilsformat \
+	-I$(top_srcdir)/src \
+	-I$(top_srcdir)/common \
 	-DNOWAMAS \
 	-std=c++20 \
 	`pkgconf --cflags fox` \
@@ -30,7 +32,8 @@ AM_CPPFLAGS = -I$(top_srcdir)/tools \
 
 noinst_LIBRARIES=tools/libtools.a \
 	cpputils/cpputilsshared/libcpputilsshared.a \
-	cpputils/cpputilsshared/cpputilsformat/libcpputilsformat.a
+	cpputils/cpputilsshared/cpputilsformat/libcpputilsformat.a \
+	common/libcommon.a
 
 tools_libtools_a_SOURCES= \
 	tools/arg.cpp \
@@ -57,6 +60,30 @@ cpputils_cpputilsshared_cpputilsformat_libcpputilsformat_a_SOURCES= \
 collectdata_LDADD = tools/libtools.a cpputils/cpputilsshared/libcpputilsshared.a cpputils/cpputilsshared/cpputilsformat/libcpputilsformat.a
 
 collectdata_LDFLAGS=-pthread
+
+common_libcommon_a_SOURCES= \
+	common/TestUtils.cc \
+	common/TestUtils.h
+
+check_PROGRAMS = test_csv_util
+
+TESTS = test_csv_util
+
+test_csv_util_SOURCES= \
+	src_test/test_csv_util_main.cc \
+	src_test/test_csv_util.cc \
+	src_test/test_csv_util.h \
+	src/csv_util.cc \
+	src/BufferedFile.cc \
+	src/colored_output.cc \
+	common/TestUtils.h
+
+test_csv_util_LDADD = common/libcommon.a \
+	tools/libtools.a \
+	cpputils/cpputilsshared/libcpputilsshared.a \
+	cpputils/cpputilsshared/cpputilsformat/libcpputilsformat.a
+
+test_csv_util_LDFLAGS = -pthread
 
 LIBS= \
     $(LIBFOX_LIBS)
