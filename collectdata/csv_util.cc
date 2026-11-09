@@ -131,7 +131,7 @@ CSVUtil::iterator CSVUtil::iterator::operator--( int amount )
 
 	for( int n = 0; n < amount; n++ )
 	{
-		DEBUG( format("n: %d pos: %d", n, pos ) );
+		// DEBUG( format("n: %d pos: %d", n, pos ) );
 		if( !parent->moveToStartOfLine(parent->in) ) {
 			DEBUG( "moveToStartOfLine failed" );
 			break;
@@ -139,7 +139,7 @@ CSVUtil::iterator CSVUtil::iterator::operator--( int amount )
 	}
 
 	pos = parent->getCurrentPos();
-	DEBUG( format("pos is: %d", pos ) );
+	// DEBUG( format("pos is: %d", pos ) );
 
 	return ret;
 }
@@ -179,7 +179,7 @@ CSVUtil::reverse_iterator CSVUtil::rbegin()
 	moveToStartOfLine( in );
 	std::fstream::pos_type pos = std::fstream::pos_type( in.tell() );
 
-	DEBUG( format( "start is at: %d end is at %d", pos, in.size() ) );
+	// DEBUG( format( "start is at: %d end is at %d", pos, in.size() ) );
 
 	return reverse_iterator( this, pos );
 }
