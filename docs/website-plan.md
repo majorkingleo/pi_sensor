@@ -9,8 +9,9 @@ Eine Webseite, die die Messdaten aus MySQL anzeigt:
 2. **Min/Max der letzten 24 Stunden** (pro Messwert, zusätzlich Durchschnitt)
 3. **Temperaturverlauf der letzten 14 Tage** (Diagramm)
 4. **Presets** – vordefinierte Ansichten (Zeiträume + Messreihen) per Knopfdruck wechselbar
-5. **Zoom** im Diagramm (Mausrad + Drag)
-6. **Dark Mode** (hell/dunkel/auto)
+5. **Aktuelles Jahr** als Preset und ein **Dropdown für vergangene Jahre**
+6. **Zoom** im Diagramm (Mausrad + Drag)
+7. **Dark Mode** (hell/dunkel/auto)
 
 **Neue Randbedingungen:**
 
@@ -21,6 +22,49 @@ Eine Webseite, die die Messdaten aus MySQL anzeigt:
   nicht wieder entstehen (siehe Abschnitt „Datenbank").
 - Aus dem ins Repo kopierten Projekt **PIDDojo** werden alle brauchbaren Muster
   übernommen (uPlot-Chart-Wrapper, Theme-System, Vite/TS-Konfiguration).
+
+---
+
+## Stand der Implementierung
+
+Die Webseite **ist umgesetzt und läuft**:
+
+| Baustein | Zustand |
+|----------|----------|
+| Duplikat-Bereinigung | erledigt: 265.728 → 44.288 Zeilen (`scripts/dedup_measurements.sql`) |
+| Bestand | 548.624 Zeilen, 2021-02-28 … 2026-11-09, **keine** Duplikate |
+| PHP-API | `webapp/api/{bootstrap,current,stats,series}.php`, alle Endpunkte getestet |
+| Frontend | `webapp/src/*.ts` (TypeScript strict), uPlot-Chart, Presets, Zoom, Dark Mode |
+| Deploy | `scripts/deploy_web.sh` baut und veröffentlicht nach `www/` |
+| Aufruf | `http://localhost/bleihuetten/pi_sensor/www/` |
+| Jahresansichten | Preset „Aktuelles Jahr" + Dropdown der vergangenen Jahre (aus `api/years.php`) |
+| Browser-Test | Chromium headless: 7 Presets, 3 Themes, Zoom, Mobil-Layout, Fehlerbanner – 0 Konsolenfehler |
+
+Beim Testen gefundene und behobene Punkte:
+
+1. **Zeitzone**: PHP läuft mit `date.timezone=UTC`, MariaDB in `CEST`. Ein in PHP
+   berechnetes „jetzt − 24 h" war dadurch um eine Stunde verschoben (238 statt 249
+   Zeilen). `db_since()` in `bootstrap.php` holt die Referenzzeit jetzt per
+   `DATE_SUB(NOW(), INTERVAL ? HOUR)` aus der Datenbank.
+2. **Preset-Wechsel behielt die Zoom-Spanne**: der 24-h-Verlauf klebte am rechten
+   Rand eines vorher 14 Tage breiten Canvas. `build(keepScale)` unterscheidet
+   jetzt Preset-/Serienwechsel (Spanne zurücksetzen) von reinem Theme-Wechsel
+   (Spanne behalten).
+3. **Leere y-Achse**: bei reinen Temperatur-Presets wurde trotzdem eine
+   „Luftfeuchte [%]"-Achse gezeichnet. Achsen werden jetzt nur für vorhandene
+   Serien erzeugt.
+4. **Englische Zeitachse**: uPlot beschriftet standardmäßig mit `12am`/`11/9/26`.
+   Die Ticks werden jetzt in `chart.ts` deutsch formatiert (`00:00`, `09.11.`,
+   `Nov. 2026`) – abhängig von Tick-Abstand und sichtbarer Spanne.
+5. **404 auf `/favicon.ico`**: durch ein Inline-SVG-Favicon in `index.html` ersetzt.
+6. **Jahreswechsel behielt die alte Zeitspanne** (2. Runde): Beim Wechsel von
+   „Aktuelles Jahr" auf „Jahr 2024" blieb die x-Achse bei 2026 und das Chart war
+   leer. Ursache: die Zoom-Erkennung verglich die alte Skala mit den **neuen**
+   Datengrenzen. Jetzt entscheidet der Aufrufer: `setData(..., keepZoom = false)`
+   bei Preset-/Jahreswechsel, `keepZoom = true` beim 60-s-Refresh.
+7. **Überlappende Achsenbeschriftung** auf schmalen Displays („Jan. 2024Apr. 2024…"):
+   die deutschen Labels sind breiter als die, für die uPlot den Tick-Abstand
+   wählt. Die `values`-Funktion dünnt die Labels jetzt per `foundSpace` aus.
 
 ---
 
@@ -39,12 +83,16 @@ Eine Webseite, die die Messdaten aus MySQL anzeigt:
 
 Wichtige Eigenheiten:
 
-- **Duplikate:** Die Tabelle wurde offenbar **zweimal vollständig importiert**
-  (id 1…44288 und 44289…88576 enthalten dieselben Daten; `id 44288` und
-  `id 88576` haben beide `2026-11-09 21:20:24`). Das wird einmalig bereinigt.
-- `measurements` hat **keine** `UNIQUE(measured_at)`-Einschränkung (bewusst, wegen
-  DST-Rücksprung). „Keine Duplikate" wird deshalb über **Bereinigung + Import-
-  Logik** erreicht, nicht über einen Unique-Key (Details unten).
+- **Duplikate:** Die Tabelle wurde mehrfach vollständig importiert (u. a.
+  `id 44288` und `id 88576` mit demselben `2026-11-09 21:20:24`). Einmalig
+  bereinigt (`scripts/dedup_measurements.sql`).
+- `measurements` trägt inzwischen – mit Commit `72d5d8f`
+  („import_temperatures: unique index, duplicate check, day-block import") – den
+  `UNIQUE KEY uniq_measured_at (measured_at)`. Der Import überspringt pro Tag
+  bereits vorhandene Zeitstempel und schreibt mit
+  `INSERT … ON DUPLICATE KEY UPDATE`. Duplikate können damit **nicht** mehr
+  entstehen; die Bereinigung war nur die Voraussetzung dafür, den Unique-Key auf
+  einer bereits dupelikathaltigen Tabelle anlegen zu können.
 - `measured_at` ist Pi-lokale Wanduhrzeit. In der Testumgebung laufen Pi- und
   Server-Uhr gleich, daher ist `NOW() - INTERVAL …` korrekt.
 - Das gesamte Repo liegt unter `/var/www/html` (also im Web-Root). Daher gehören
@@ -179,7 +227,8 @@ pi_sensor/
 │   │   ├── bootstrap.php
 │   │   ├── current.php
 │   │   ├── stats.php
-│   │   └── series.php
+│   │   ├── series.php
+│   │   └── years.php
 │   ├── src/
 │   │   ├── main.ts               # Bootstrap + Wiring
 │   │   ├── api.ts                # fetch-Wrapper
@@ -194,16 +243,19 @@ pi_sensor/
 └── www/                          # NUR ausgelieferte Daten (Deploy-Ziel)
     ├── index.html
     ├── assets/                   # gebaute JS/CSS (von Vite)
-    └── api/                      # ausführbare PHP-Endpunkte (kopiert)
+    └── api/                      # ausführbare PHP-Endpunkte (kopiert: alle *.php)
         ├── bootstrap.php
         ├── current.php
         ├── stats.php
-        └── series.php
+        ├── series.php
+        └── years.php
 ```
 
-DB-Zugangsdaten liegen **nicht** in `www/`, sondern z. B. in
-`etc/web_db.ini` (außerhalb von `www/`) und werden von `api/bootstrap.php`
-eingelesen.
+DB-Zugangsdaten liegen **nicht** in `www/`, sondern in `/etc/pi_sensor/web.ini`
+(außerhalb des DocumentRoot) und werden von `api/bootstrap.php` eingelesen.
+Reihenfolge: `/etc/pi_sensor/web.ini` → `etc/web_db.ini` (Entwicklung, optional)
+→ Umgebungsvariablen `PI_SENSOR_DB_*` haben Vorrang. Vorlage:
+`etc/web.ini.example`.
 
 `.gitignore` ergänzen: `webapp/node_modules/`, `webapp/dist/` (und optional
 `www/` als reines Deploy-Artefakt – Entscheidung offen).
@@ -293,6 +345,22 @@ und löst zugleich das Duplikat-Problem. Antwort:
 }
 ```
 
+### 4. `GET api/years.php` → verfügbare Kalenderjahre
+
+```sql
+SELECT YEAR(measured_at) AS year, COUNT(*) AS row_count
+FROM measurements GROUP BY YEAR(measured_at) ORDER BY year DESC;
+```
+
+Antwort (Cache 1 h):
+
+```json
+{ "current_year": 2026,
+  "years": [ {"year": 2026, "rows": 81187}, {"year": 2025, "rows": 97923}, … ] }
+```
+
+Damit baut das Frontend das Jahres-Dropdown, ohne Jahre zu raten.
+
 ---
 
 ## Frontend-Funktionen
@@ -323,7 +391,15 @@ Vorgeschlagene Presets (Buttons über dem Diagramm):
 | 14 Tage (Default) | letzte 14 Tage | `1h` | Temperatur |
 | 30 Tage | letzte 30 Tage | `1h` | Temperatur |
 | 90 Tage | letzte 90 Tage | `1d` | Temperatur |
+| Aktuelles Jahr | 01.01. des laufenden Jahres … jetzt | `1d` | Temperatur |
+| Jahr JJJJ (Dropdown) | 01.01. … 31.12. des Jahres | `1d` | Temperatur |
 | Alles | kompletter Bestand | `1d` | Temperatur |
+
+Die Jahresliste ist **nicht** hart kodiert: `api/years.php` liefert die Jahre, die
+tatsächlich Daten enthalten, plus das aktuelle Jahr aus der Datenbankuhr. Das
+Dropdown zeigt nur **vergangene** Jahre (das laufende hat einen eigenen Button);
+gibt es keine, wird es ausgeblendet. Die Auswahl wird in `localStorage`
+(`pi-sensor-preset`, z. B. `year-2024`) gespeichert und überlebt einen Reload.
 
 Zusätzlich Umschalter für die **Reihen**: „Temperaturen", „Luftfeuchte",
 „Alles". Temperatur an der linken y-Achse (°C), Luftfeuchte an der rechten (%).
@@ -389,26 +465,31 @@ SELECT COUNT(*) AS distinct_ts FROM (SELECT DISTINCT measured_at FROM measuremen
 -- total == distinct_ts
 ```
 
-Als SQL-Datei ablegen: `scripts/dedup_measurements.sql` (optional, für
-Dokumentation/Wiederholbarkeit).
+Umgesetzt als `scripts/dedup_measurements.sql` (idempotent, meldet vorher/nachher).
+Vor dem Lauf wurde eine Sicherheitskopie `measurements_dedup_backup` angelegt
+(265.728 Zeilen); sie kann nach Abnahme mit
+`DROP TABLE measurements_dedup_backup;` entfernt werden.
 
 ### Zukünftige Duplikate verhindern
 
-- Der Importer (`import_temperatures`) setzt über `MAX(measured_at)` wieder auf
-  den neuesten bereits importierten Datensatz auf und importiert nur neuere
-  Zeilen. Im Normalbetrieb entstehen daher **keine** Duplikate.
-- **Wichtig:** `--full` auf einer bereits gefüllten Tabelle erzeugt erneut
-  Duplikate. Nicht auf `measurements` anwenden.
-- Optionaler Schutz (Folgeschritt): Importer-Sink prüft vor dem INSERT, ob ein
-  `measured_at` schon existiert, und überspringt ihn (z. B. neues Flag
-  `--skip-existing`). Erst umsetzen, wenn es nötig wird.
+Der Stand ist bereits sicher (Commit `72d5d8f`):
 
-Kein `UNIQUE(measured_at)` einführen – das kollidiert mit dem DST-Rücksprung
-(siehe `pi-sensor-database`-Skill).
+- `UNIQUE KEY uniq_measured_at (measured_at)` auf `measurements`;
+  `--create-tables` ergänzt ihn auch auf bestehenden Tabellen
+  (`ALTER TABLE … ADD UNIQUE KEY`, „Duplicate key name" wird ignoriert).
+- Der Importer liest pro Tag die bereits vorhandenen Zeitstempel über den neuen
+  Index und überspringt sie; der Rest geht als
+  `INSERT … ON DUPLICATE KEY UPDATE` raus (race- und DST-sicher).
+- `--full` bedeutet jetzt „ganze Datei scannen statt fortsetzen" und füllt nur
+  Lücken – es importiert nichts doppelt.
+
+`deleting`-Regel für den Notfall (falls doch je Duplikate auftauchen, etwa nach
+einem Import mit einer älteren Binary): `scripts/dedup_measurements.sql`
+ausführen – es behält pro `measured_at` die Zeile mit der höchsten `id`.
 
 ### Optional: aggregierte Tabelle für lange Zeiträume
 
-Für „Alles" (nach Bereinigung ~44 k Zeilen) reicht SQL-Downsampling auf `1d`
+Für „Alles" (548 k Zeilen, ~2.100 Tagespunkte) reicht SQL-Downsampling auf `1d`
 problemlos. Wenn die Daten über Jahre wachsen, kann eine voraggregierte
 Stundentabelle angelegt werden:
 
@@ -467,8 +548,14 @@ Eigenschaften:
   `vite.config.ts`, `.git*`.
 - Nach dem Lauf enthält `www/` ausschließlich über HTTP erreichbare Artefakte.
 
+Zusätzlich prüft das Skript am Ende, dass in `www/` keine Quellen liegen
+(`*.ts`, `*.map`, `package.json`, `tsconfig.json`, `node_modules`, `.git*`,
+`*.md`, `*.ini`) und bricht sonst ab.
+
 Aufruf: `./scripts/deploy_web.sh`, danach
 `http://localhost/bleihuetten/pi_sensor/www/`.
+Mit `./scripts/deploy_web.sh --skip-build` wird nur neu veröffentlicht (nutzt das
+vorhandene `webapp/dist`).
 
 ---
 
@@ -502,18 +589,41 @@ Aufruf: `./scripts/deploy_web.sh`, danach
 
 ---
 
-## Verifikation
+## Verifikation (durchgeführt)
 
-- `curl` auf alle drei API-Endpunkte; Antworten sind gültiges JSON.
-- Nach Bereinigung: `COUNT(*) == COUNT(DISTINCT measured_at)` (≈ 44.288).
-- Aktuelle Werte entsprechen `SELECT * FROM measurements ORDER BY id DESC LIMIT 1`.
-- Min/Max 24 h decken sich mit `stats.php?hours=24` gegen direkte SQL-Abfrage.
-- 14-Tage-Chart zeigt ~4.000 Punkte (Rohdaten) bzw. 336 Stunden-Buckets.
-- Zoom: Mausrad + Drag verändern den sichtbaren Ausschnitt; Preset-Klick setzt
-  zurück.
-- Dark Mode: hell/dunkel/auto wirkt auf CSS und uPlot; Wahl überlebt Reload.
-- `www/` enthält **keinen** Quellcode: `find www -name '*.ts' -o -name 'package.json' -o -name node_modules` liefert nichts.
-- Kein PHP-Fehler im Apache-Log; keine DB-Zugangsdaten im Browser sichtbar.
+API (curl):
+
+- `current.php` → `{"measured_at":"2026-11-09 21:20:24","temp_inside":11.0,…}`
+- `stats.php?hours=24` → 238 Zeilen, `temp_outside` min 0,9 / avg 5,57 / max 11,9
+  – **identisch** mit der direkten SQL-Abfrage
+- `series.php?hours=336&bucket=1h` → 335 Punkte, `bucket=1d` → 173 Punkte (Alles)
+- Fehlerfälle liefern 400 mit JSON-Meldung: unbekanntes Feld, `bucket=2h`,
+  `hours=abc`, `hours=999999`, `bucket=5m` ohne Zeitfenster, ungültiges Datum
+
+Datenbank:
+
+- `COUNT(*) == COUNT(DISTINCT measured_at)` → 44.288 == 44.288
+- `dedup_measurements.sql` ist idempotent (zweiter Lauf löscht nichts)
+
+Browser (Chromium 131 headless, 1280×950 und 390×844):
+
+- 4 Kacheln „aktuelle Werte", 4 Statistik-Blöcke, 7 Preset-Buttons, 1 Chart
+- alle Presets (inkl. „Aktuelles Jahr" und „Alles" mit 2057 Tagespunkten):
+  Punktzahl/Auflösung/Zeitraum im Footer korrekt, 3 Achsen bei
+  Temperatur+Feuchte, 2 Achsen bei reinen Temperatur-Presets
+- Jahres-Dropdown: Optionen 2025…2021 (aktuelles Jahr ausgeblendet), Auswahl
+  lädt „Jahr 2024 · 364 Punkte · 01.01.2024 – 31.12.2024", Buttons werden
+  abgewählt, Platzhalter hebt die Auswahl wieder auf, Auswahl überlebt Reload,
+  Preset-Klick setzt das Dropdown zurück, Rückkehr auf „Aktuelles Jahr" ergibt
+  wieder das exakt gleiche Bild
+- Zoom: Mausrad ändert den Ausschnitt (Screenshot-Hash), Doppelklick stellt exakt
+  den Ausgangszustand wieder her, Zoom bleibt bei Theme-Wechsel und Refresh
+  erhalten, Preset-Wechsel setzt das Fenster zurück
+- Dark Mode hell/dunkel/auto wirkt auf CSS **und** Chart; Wahl überlebt Reload
+- Mobil 390 px: kein horizontaler Überlauf
+- API-Fehler (simulierter 500er) → Fehlerbanner „Daten konnten nicht geladen
+  werden: …"
+- **0 Konsolenfehler / 0 fehlgeschlagene Requests**
 
 ---
 
@@ -534,14 +644,31 @@ Aufruf: `./scripts/deploy_web.sh`, danach
 
 ## Offene Punkte
 
-- **Zeitzone:** `measured_at` ist Pi-lokale Zeit. Solange Pi und Server dieselbe
-  Zeitzone haben, ist `NOW() - INTERVAL …` korrekt. Sonst fester Offset/UTC-Policy.
+- **Read-only MySQL-Benutzer:** Der Web-Zugriff nutzt derzeit den vorhandenen
+  Benutzer `bleihuetten` (ALLE Rechte auf die DB `bleihuetten`). Der empfohlene
+  Benutzer `pi_sensor_www` mit ausschließlich `SELECT` auf `measurements` konnte
+  hier nicht angelegt werden, weil kein MySQL-root-Zugang besteht. Auf einem
+  Server mit root-Zugang nachholen und `/etc/pi_sensor/web.ini` anpassen:
+
+  ```sql
+  CREATE USER 'pi_sensor_www'@'localhost' IDENTIFIED BY '<secret>';
+  GRANT SELECT ON bleihuetten.measurements TO 'pi_sensor_www'@'localhost';
+  ```
+
+- **`measurements_dedup_backup`** (Sicherheitskopie, 265.728 Zeilen) nach Abnahme
+  löschen: `DROP TABLE measurements_dedup_backup;`
+- **Repository im Web-Root:** Das Repo liegt unter `/var/www/html`, d. h.
+  `webapp/`, `scripts/`, `etc/`, `.git/` sind über HTTP erreichbar
+  (`AllowOverride None`, also greift keine `.htaccess`). Empfehlung: Repo aus dem
+  DocumentRoot herausziehen oder einen `<Directory>`-Block ergänzen, der alles
+  außer `www/` sperrt. Die Zugangsdaten selbst liegen bereits in
+  `/etc/pi_sensor/web.ini` und sind damit nicht betroffen.
 - **URL-Final:** Seite unter `/bleihuetten/pi_sensor/www/` lassen oder per
-  Apache-Alias/Symlink auf kurze URL (z. B. `/bleihuetten/`)?
-- **`www/` in Git:** Deploy-Artefakt einchecken oder gitignoren? (Empfehlung:
-  gitignoren, da es aus `webapp/` reproduzierbar gebaut wird.)
+  Apache-Alias auf kurze URL (z. B. `/bleihuetten/`)?
 - **Preset-Umfang:** Genügen die Zeitraum-Presets, oder benutzerdefinierte
   Datumsbereiche (Datepicker)?
 - **Live-Update:** Reicht 60-s-Refresh für „aktuelle Werte", oder Diagramm per
   WebSocket/SSE nachladen?
+- **Aggregat-Tabelle** `measurements_hourly`: erst nötig, wenn der Bestand über
+  Jahre wächst.
 <!-- End of AI generated by GitHub Copilot (DeepSeek V4 Pro), v1.0 -->
