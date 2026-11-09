@@ -75,7 +75,9 @@ void print_result( ColoredOutput & co, const std::string & file,
               << "offset    : " << (long long)start_offset
               << " -> " << (long long)res.end_offset << '\n'
               << "lines     : " << res.lines << '\n'
+              << "days      : " << res.days << '\n'
               << "records   : " << res.records << '\n'
+              << "skipped   : " << res.duplicates << " (already in the database)\n"
               << "empty     : " << res.empty << '\n'
               << "malformed : " << res.malformed << '\n';
 
@@ -159,7 +161,7 @@ int main( int argc, char ** argv )
 
     Arg::IntOption o_batch( "b" );
     o_batch.addName( "batch" );
-    o_batch.setDescription( "rows per transaction (default: 500)" );
+    o_batch.setDescription( "rows per INSERT statement (default: 500)" );
     o_batch.setRequired( false );
     arg.addOptionR( &o_batch );
 
@@ -191,7 +193,7 @@ int main( int argc, char ** argv )
     arg.addOptionR( &o_create_tables );
 
     Arg::FlagOption o_full( "full" );
-    o_full.setDescription( "import the whole file, ignore the database content" );
+    o_full.setDescription( "scan the whole file instead of resuming, imports only missing records" );
     o_full.setRequired( false );
     arg.addOptionR( &o_full );
 
@@ -326,8 +328,8 @@ int main( int argc, char ** argv )
         ImportRunner runner( csv, sink, (std::size_t)batch );
         ImportResult res = runner.run( offset );
 
-        DEBUG( format( "imported %ld of %ld lines (%ld malformed) from %s, offset %ld -> %ld",
-                       (long)res.records, (long)res.lines, (long)res.malformed,
+        DEBUG( format( "imported %ld of %ld lines (%ld skipped, %ld malformed) from %s, offset %ld -> %ld",
+                       (long)res.records, (long)res.lines, (long)res.duplicates, (long)res.malformed,
                        csv.c_str(), (long)offset, (long)res.end_offset ) );
 
         print_result( co, csv, db_newest, offset, res, sink.error() );

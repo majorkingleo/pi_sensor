@@ -103,13 +103,23 @@ CREATE TABLE measurements (
   hum_inside   DECIMAL(5,2)    NULL,
   temp_outside DECIMAL(5,2)    NULL,
   hum_outside  DECIMAL(5,2)    NULL,
-  KEY idx_measured_at (measured_at)
+  UNIQUE KEY uniq_measured_at (measured_at)
 );
 ```
 
-Do **not** put a `UNIQUE(measured_at)` key: timestamps are local time, and on
-DST fall-back the same wall-clock time occurs twice. The importer searches the
-last already imported record instead, so no unique key is needed.
+`measured_at` is **UNIQUE**, so the same timestamp can exist only once. The
+importer checks per day which timestamps are already stored and skips them;
+`INSERT ... ON DUPLICATE KEY UPDATE` makes the write safe even if the check is
+raced, and lets `--full` refresh existing rows.
+
+Consequence at the end of DST: the hour that occurs twice has the same
+wall-clock times in the CSV. The second record updates the first one (last one
+wins) instead of creating a duplicate row.
+
+`--create-tables` also runs `ALTER TABLE ... ADD UNIQUE KEY uniq_measured_at`
+(ignoring "Duplicate key name"), so tables created by an older version are
+upgraded. If such a table already contains duplicates the `ALTER` fails and the
+duplicates have to be removed first.
 
 There is **no `import_state` table** any more (an older version stored the read
 offset there; it can be dropped).
@@ -191,7 +201,7 @@ Config file (settings infrastructure `Configfile2`, copied from lotr_analyzer),
 e.g. `/etc/pi_sensor/import.ini`: see section 3 for the exact keys.
 
 DB credentials stay on the server (never on the Pi). Create a dedicated MySQL
-user with only `INSERT, UPDATE, SELECT` on `measurements` and `import_state`.
+user with only `INSERT, UPDATE, SELECT` on `measurements`.
 
 ### Import algorithm (no stored state)
 
@@ -206,14 +216,21 @@ user with only `INSERT, UPDATE, SELECT` on `measurements` and `import_state`.
 3. Import forward from that offset with `CSVUtil::iterator`, one `DataRecord`
    per line (semicolon split, empty fields suppressed, same code path as the
    GUI).
-4. Consume only **complete** lines: only up to `complete_file_size()`, i.e. the
+4. The records are buffered **per day** (memory stays at ~288 records, no matter
+   how big the file is) and flushed when the date changes:
+   - `SELECT measured_at FROM measurements WHERE measured_at >= '<day> 00:00:00'
+     AND measured_at < '<day> 00:00:00' + INTERVAL 1 DAY` gives the timestamps
+     that already exist;
+   - those records are skipped (counted as `skipped`), the rest is inserted in
+     `batch` sized `INSERT ... ON DUPLICATE KEY UPDATE` statements, one
+     transaction per insert.
+5. Consume only **complete** lines: only up to `complete_file_size()`, i.e. the
    last `'\n'`. A record still being written by rsync is left for the next run.
-5. Insert in batches of `batch` rows, one transaction (and `COMMIT`) per batch.
-   A crash therefore re-imports from the newest committed record on the next
-   run - no offset has to be repaired.
-6. `--dry-run` parses and counts without a database, `--full` ignores the
-   database content and imports the whole file, `--offset N` forces a start
-   offset (debugging).
+6. A crash is harmless: the next run resumes at the newest committed record.
+7. `--dry-run` parses and counts without a database. `--full` starts at offset 0
+   and scans the whole file, but still skips everything that is already in the
+   database - it only fills gaps. `--offset N` forces a start offset
+   (debugging).
 
 `--create-tables` creates `measurements` (`CREATE TABLE IF NOT EXISTS`).
 For the very first run (≈514k rows) a `LOAD DATA LOCAL INFILE` pre-load is a
@@ -292,6 +309,14 @@ Unit tests in `src_test/test_importresume.cc`:
 timestamp found before it is used;
 - identical timestamps (DST fall-back) -> the **last** occurrence wins;
 - missing file -> -1.
+
+Unit tests in `src_test/test_importrunner.cc` (in-memory sink):
+
+- one store call per day, so memory is bounded by a day;
+- existing timestamps of a day are skipped and counted as `skipped`;
+- a full rescan (`--full`, offset 0) skips existing records and only fills gaps;
+- batching respects the `batch` size;
+- a trailing partial line is not imported.
 
 The DB sink is behind `ImportSink`, so tests / `--dry-run` use an in-memory
 sink; a real MySQL integration test can be optional/tagged.
