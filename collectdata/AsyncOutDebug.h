@@ -15,6 +15,7 @@
 #include <chrono>
 
 #include "debug.h"          // local Tools::Debug + Tools::x_debug
+#include "colored_output.h" // local ColoredOutput (terminal color detection)
 #include <FastDelivery.h>   // Tools::FastDelivery::Publisher / PublisherNode
 
 namespace AsyncOut {
@@ -28,7 +29,7 @@ struct Data
     std::chrono::system_clock::time_point   when = std::chrono::system_clock::now();
 };
 
-class Logger : public Tools::FastDelivery::PublisherNode<Data>
+class Logger : public Tools::FastDelivery::PublisherNode<Data>, public ColoredOutput
 {
     std::list<value_type>       messages;
     std::mutex                  m_messages;
