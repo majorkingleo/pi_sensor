@@ -13,7 +13,10 @@ collectdata_SOURCES=\
 		FilterString.cc \
 		GenGnuPlotData.cc \
 		Gen24HoursPlot.cc \
-		GenXDaysPlot.cc 
+		GenXDaysPlot.cc \
+		AsyncOutDebug.cc \
+		AsyncFileLogger.cc \
+		logging.cc
 
 
 AM_CPPFLAGS = -I$(top_srcdir)/tools \

@@ -131,6 +131,11 @@ with exactly this content:
 
 using namespace Tools;
 
+AsyncOut::Debug::Debug()
+: Tools::Debug()
+{
+}
+
 void AsyncOut::Debug::add( const char *file, unsigned line, const char *function, const std::string & s )
 {
     distribute( Data{file, line, function, s} );
@@ -643,27 +648,38 @@ Run the two commands below and check the results.
 
 ### 10.1 Console backend
 
+IMPORTANT: pass the CSV file **before** the options. The project's `Tools::Arg`
+parser attaches a following positional value to the preceding flag, so
+`-d --last24 file` fails with "invalid option or value". This is a pre-existing
+quirk, not caused by this change.
+
 ```bash
 cd /home/martin/programs/pi_sensor/collectdata
-./collectdata -d --last24 ../temperatures.csv | head -n 20
+./collectdata ../temperatures.csv -d --last24 > /tmp/cd-console.out 2>&1
+echo "exit=$?"
+head -n 2 /tmp/cd-console.out
 ```
 
-Expected: the normal `--last24` output appears, and any `DEBUG(...)` lines from
-`DataRecord.cc` / `FilterDay.cc` are printed as `<file>:<line> <message>` by
-the background thread. The process must exit cleanly (no hang, no crash).
+Expected: exit code 0. The output is dominated by `DEBUG(...)` lines printed by
+the background thread as `<file>:<line> <message>` (e.g.
+`csv_util.cc:77 line: ...`, `FilterDataRecords.cc:95 SEEKDIR_BACKWARDS`). The
+process must exit cleanly (no hang, no crash) — the final `logShutdown()` join
+guarantees this.
 
 ### 10.2 File backend
 
 ```bash
 cd /home/martin/programs/pi_sensor/collectdata
 rm -f /tmp/collectdata-test.log
-./collectdata --last24 --log-file /tmp/collectdata-test.log ../temperatures.csv > /dev/null
-cat /tmp/collectdata-test.log
+./collectdata ../temperatures.csv --log-file /tmp/collectdata-test.log --last24 > /dev/null 2>&1
+echo "exit=$?"
+wc -l /tmp/collectdata-test.log
+head -n 2 /tmp/collectdata-test.log
 ```
 
-Expected: the file `/tmp/collectdata-test.log` exists and contains timestamped
-lines of the form `[YYYY-MM-DD HH:MM:SS] <file>:<line> <message>`. The process
-must exit cleanly.
+Expected: exit code 0. The file exists and contains timestamped lines of the
+form `[YYYY-MM-DD HH:MM:SS] <file>:<line> <message>`. The process must exit
+cleanly.
 
 If either run hangs at exit, the `logShutdown()` join is missing or `LogSession`
 is not constructed at the top of `main` — re-check Edits 7.1 and 7.2.

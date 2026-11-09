@@ -17,6 +17,7 @@
 #include "FilterDay.h"
 #include "Gen24HoursPlot.h"
 #include <stderr_exception.h>
+#include "logging.h"
 
 using namespace Tools;
 
@@ -220,6 +221,7 @@ void printAllLast24( const std::string & file, bool generate_gnuplot_data )
 
 int main( int argc, char **argv )
 {
+  LogSession log_session;
   Co co;
 
   std::string data_file_name = "temperatures.csv";
@@ -268,6 +270,11 @@ int main( int argc, char **argv )
   o_debug.setDescription("print debugging messages");
   o_debug.setRequired(false);
   arg.addOptionR( &o_debug );
+
+  Arg::StringOption o_log_file("log-file");
+  o_log_file.setDescription("write debug messages async to this file");
+  o_log_file.setRequired(false);
+  arg.addOptionR( &o_log_file );
 
   Arg::OptionChain oc_print_stuff;
   arg.addChainR(&oc_print_stuff);
@@ -335,9 +342,15 @@ int main( int argc, char **argv )
 	  return 0;
   }
 
-  if( o_debug.getState() )
+  if( o_debug.getState() || o_log_file.isSet() )
   {
-	  Tools::x_debug = new OutDebug();
+	  std::string log_file;
+
+	  if( o_log_file.isSet() ) {
+		  log_file = *o_log_file.getValues()->begin();
+	  }
+
+	  logInit( log_file, o_debug.getState() );
   }
 
 #if 0

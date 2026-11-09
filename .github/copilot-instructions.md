@@ -5,6 +5,6 @@
 * use local temp directory tmp in this workspace
 * don't use fish commands in the shell. write bash scripts in tmp.
 * use brakets for all one liners, like `if [ -f file ]` and `for i in {1..10}`
-
+* use "#pragma" once instead of include guards for new files
 
 
