@@ -13,6 +13,7 @@ install-sh
 missing
 Makefile
 collectdata
+import_temperatures
 .cproject
 .project
 .settings

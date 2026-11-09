@@ -59,6 +59,27 @@ AS_IF([test "x${FOX16}x${FOX17}" == "xx" ],
     )
 )
 
+dnl the MySQL importer (import_temperatures) is optional
+AC_ARG_WITH([mysql],
+  [AS_HELP_STRING([--without-mysql],[do not build the MySQL import tool])],
+  [],
+  [with_mysql=yes]
+)
 
+have_mysql=no
+AS_IF([test "x$with_mysql" != "xno"], [
+    AC_PATH_PROG([MYSQL_CONFIG], [mysql_config], [no])
+    AS_IF([test "x$MYSQL_CONFIG" != "xno"], [
+        MYSQL_CFLAGS=`$MYSQL_CONFIG --include`
+        MYSQL_LIBS=`$MYSQL_CONFIG --libs`
+        have_mysql=yes
+    ], [
+        AC_MSG_WARN([mysql_config not found - import_temperatures will not be built])
+    ])
+])
+
+AC_SUBST([MYSQL_CFLAGS])
+AC_SUBST([MYSQL_LIBS])
+AM_CONDITIONAL([HAVE_MYSQL], [test "x$have_mysql" = "xyes"])
 
 AC_OUTPUT

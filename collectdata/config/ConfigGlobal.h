@@ -1,0 +1,26 @@
+/*
+ * Settings section "global", copied from lotr_analyzer/config/ConfigGlobal.h
+ * original source: https://github.com/majorkingleo/lotr_analyzer
+ * author: Martin Oberzalek
+ */
+#pragma once
+
+#include "Configfile2.h"
+
+class ConfigSectionGlobal : public Configfile2::Section
+{
+public:
+	static Configfile2::SectionKey<ConfigSectionGlobal> KEY;
+
+	CONFIG_SIMPLE_DECLARE_STR( LogFile );
+
+protected:	
+
+public:
+	ConfigSectionGlobal( const std::string & name_, Configfile2 *config_file_ );
+
+	static void registerSection( Configfile2 *config_file );
+
+};
+
+
