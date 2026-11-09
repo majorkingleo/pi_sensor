@@ -202,6 +202,8 @@ test_csv_util_SOURCES = \
 	src_test/test_file_option.h \
 	src_test/test_importresume.cc \
 	src_test/test_importresume.h \
+	src_test/test_importrunner.cc \
+	src_test/test_importrunner.h \
 	src_test/test_helpers.h
 
 test_csv_util_LDADD = \

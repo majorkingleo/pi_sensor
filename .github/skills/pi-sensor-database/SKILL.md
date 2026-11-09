@@ -31,28 +31,25 @@ CREATE TABLE measurements (
   hum_inside   DECIMAL(5,2)    NULL,
   temp_outside DECIMAL(5,2)    NULL,
   hum_outside  DECIMAL(5,2)    NULL,
-  KEY idx_measured_at (measured_at)
+  UNIQUE KEY uniq_measured_at (measured_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 Rules that must not be broken:
 
-- **No `UNIQUE(measured_at)`.** Timestamps are local wall-clock time; when DST ends
-  the same time occurs twice. Exactly-once import is achieved by the importer
-  (see below), not by a constraint.
+- **`measured_at` is UNIQUE.** The importer checks per day which timestamps
+already exist (`existingTimestamps()`) and uses `INSERT ... ON DUPLICATE KEY
+UPDATE`, so a duplicate updates the row instead of failing.
+- Consequence at the end of DST: the hour that occurs twice has the same
+wall-clock times; the **later** record wins, no duplicate row is created.
 - `measured_at` is written as `DataRecord::getRawDateTimeStr()` (`"YYYY-MM-DD HH:MM:SS"`
-  straight from the CSV). Never round-trip it through `time_t`/`mktime` — that
-  shifts every summer value by one hour.
+straight from the CSV). Never round-trip it through `time_t`/`mktime` — that
+shifts every summer value by one hour.
 - `DECIMAL(5,2)` = max ±999.99, formatted as `%.2f`.
 - Deliberately **no FK**, no extra column for humidity units etc.
-
-`import_state (name, byte_offset, file_size, mtime, updated_at)` is **obsolete**
-(an earlier version stored the read offset there). It can be dropped:
-
-```sql
-DROP TABLE IF EXISTS import_state;
-```
-
+- `--create-tables` also runs `ALTER TABLE ... ADD UNIQUE KEY uniq_measured_at (measured_at)`
+and ignores "Duplicate key name", so old tables (with only `idx_measured_at`) are
+upgraded. Fails if the table already holds duplicate timestamps.
 ## Data flow
 
 ```mermaid
@@ -70,12 +67,18 @@ flowchart LR
    table is empty or missing).
 2. `find_import_start()` searches the CSV backwards for that record
    (`CSVUtil::rbegin()`), resumes after it.
-3. Per batch: `BEGIN` → one `INSERT ... VALUES (...),(...)...` → `COMMIT`.
-4. Therefore: crashes are harmless, a re-run picks up at the newest committed row.
-   Never wrap the whole import in one transaction — that would make the resume
-   point useless.
-
-Table name: `-t/--table`, `[import] table`, default `measurements`.
+3. `ImportRunner` buffers **one day** of records (memory stays bounded, ~288
+rows), and per day:
+   - `existingTimestamps(day)` → `SELECT measured_at ... WHERE measured_at >=
+     '<day> 00:00:00' AND measured_at < '<day> 00:00:00' + INTERVAL 1 DAY`,
+   - skip those records (counted as `skipped`), insert the rest in `batch`
+     sized `INSERT ... ON DUPLICATE KEY UPDATE` statements, one transaction per
+     statement.
+4. `--full` scans the whole file from offset 0 but skips everything that is
+   already stored - it only fills gaps. Nothing is written twice.
+5. Therefore: crashes are harmless, a re-run picks up at the newest committed
+   row. Never wrap the whole import in one transaction - that would make the
+   resume point useless.
 Batch size: `-b/--batch`, `[import] batch`, default `500`.
 `--create-tables` runs `CREATE TABLE IF NOT EXISTS` (only `measurements`).
 
@@ -167,8 +170,10 @@ Always keep `measured_at` in the `WHERE` so `idx_measured_at` is used.
 ## Checklist for schema changes
 
 1. Change `DbImportSink::createTables()` **and** `docs/mysql-import-plan.md`.
-2. Update the `INSERT` column list in `DbImportSink::insertRows()`.
-3. Keep `id` + `idx_measured_at`; the resume logic depends on `MAX(measured_at)`.
+2. Update the `INSERT` column list in `DbImportSink::insertRows()` and the
+   `ON DUPLICATE KEY UPDATE` list.
+3. Keep `id` + the UNIQUE key on `measured_at`; the resume logic depends on
+   `MAX(measured_at)` and the duplicate check on the per-day range query.
 4. Re-run `./import_temperatures -t measurements_test --create-tables -f <csv>`
-   twice (second run must report `records: 0`).
-5. `make check` (the resume tests need no database).
+   twice — the second run must report `records: 0`, `skipped: <n>`.
+5. `make check` (resume and runner tests need no database).
