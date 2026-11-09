@@ -7,6 +7,7 @@
 #include "test_datarecord.h"
 #include "test_filters.h"
 #include "colored_output.h"
+#include "ColBuilder.h"
 
 #include <arg.h>
 #include <format.h>
@@ -66,6 +67,13 @@ int main( int argc, char **argv )
     test_cases.splice( test_cases.end(), test_case_datarecord() );
     test_cases.splice( test_cases.end(), test_case_filters() );
 
+    ColBuilder col;
+    const int COL_IDX      = col.addCol( "IDX" );
+    const int COL_NAME     = col.addCol( "NAME" );
+    const int COL_RESULT   = col.addCol( "RESULT" );
+    const int COL_EXPECTED = col.addCol( "EXPECTED" );
+    const int COL_TEST_RES = col.addCol( "TEST_RES" );
+
     int idx = 0;
     int failed = 0;
 
@@ -97,8 +105,14 @@ int main( int argc, char **argv )
             passed ? ColoredOutput::GREEN : ColoredOutput::RED,
             passed ? "succeeded" : "failed" );
 
-        std::cout << format( "%2d  %s  %s\n", idx, test->getName().c_str(), status.c_str() );
+        col.addColData( COL_IDX,      format( "%2d", idx ) );
+        col.addColData( COL_NAME,     test->getName() );
+        col.addColData( COL_RESULT,   result );
+        col.addColData( COL_EXPECTED, expected );
+        col.addColData( COL_TEST_RES, status );
     }
+
+    std::cout << col.toString() << std::endl;
 
     if( failed > 0 ) {
         std::cout << "Complete result: "

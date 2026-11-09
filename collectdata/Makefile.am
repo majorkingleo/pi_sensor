@@ -63,7 +63,9 @@ collectdata_LDFLAGS=-pthread
 
 common_libcommon_a_SOURCES= \
 	common/TestUtils.cc \
-	common/TestUtils.h
+	common/TestUtils.h \
+	common/ColBuilder.cc \
+	common/ColBuilder.h
 
 check_PROGRAMS = test_csv_util
 
