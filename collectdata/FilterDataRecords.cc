@@ -44,6 +44,8 @@ const std::list< std::vector<std::string> > &  FilterDataRecords::filter( CSVUti
 			{
 				records_read++;
 
+				std::vector<std::string> record = *it;
+
 				switch( strategy )
 				{
 					case STRATEGY_ALL_FILTERS_ARE_MATCHING:
@@ -51,7 +53,7 @@ const std::list< std::vector<std::string> > &  FilterDataRecords::filter( CSVUti
 						bool all_filters_are_matching = true;
 						for( auto filter : filters )
 						{
-							if( !(*filter)(*it) ) {
+							if( !(*filter)(record) ) {
 								all_filters_are_matching = false;
 								continueProcessing = filter->continueProcessing();
 								break;
@@ -61,7 +63,7 @@ const std::list< std::vector<std::string> > &  FilterDataRecords::filter( CSVUti
 						}
 
 						if( all_filters_are_matching ) {
-							results.push_back( *it );
+							results.push_back( record );
 						}
 					}
 					break;
@@ -71,7 +73,7 @@ const std::list< std::vector<std::string> > &  FilterDataRecords::filter( CSVUti
 						bool any_filters_is_matching = false;
 						for( auto filter : filters )
 						{
-							if( (*filter)(*it) ) {
+							if( (*filter)(record) ) {
 								any_filters_is_matching = true;
 								continueProcessing = filter->continueProcessing();
 								break;
@@ -81,7 +83,7 @@ const std::list< std::vector<std::string> > &  FilterDataRecords::filter( CSVUti
 						}
 
 						if( any_filters_is_matching ) {
-							results.push_back( *it );
+							results.push_back( record );
 						}
 					}
 					break;
@@ -97,6 +99,9 @@ const std::list< std::vector<std::string> > &  FilterDataRecords::filter( CSVUti
 			for( auto it = csv_util.rbegin(); it != csv_util.rend() && continueProcessing; it++ )
 			{
 				records_read++;
+
+				std::vector<std::string> record = *it;
+
 				switch( strategy )
 				{
 					case STRATEGY_ALL_FILTERS_ARE_MATCHING:
@@ -104,7 +109,7 @@ const std::list< std::vector<std::string> > &  FilterDataRecords::filter( CSVUti
 						bool all_filters_are_matching = true;
 						for( auto filter : filters )
 						{
-							if( !(*filter)(*it) ) {
+							if( !(*filter)(record) ) {
 								all_filters_are_matching = false;
 								continueProcessing = filter->continueProcessing();
 								break;
@@ -114,7 +119,7 @@ const std::list< std::vector<std::string> > &  FilterDataRecords::filter( CSVUti
 						}
 
 						if( all_filters_are_matching ) {
-							results.push_back( *it );
+							results.push_back( record );
 						}
 					}
 					break;
@@ -124,7 +129,7 @@ const std::list< std::vector<std::string> > &  FilterDataRecords::filter( CSVUti
 						bool any_filters_is_matching = false;
 						for( auto filter : filters )
 						{
-							if( (*filter)(*it) ) {
+							if( (*filter)(record) ) {
 								any_filters_is_matching = true;
 								continueProcessing = filter->continueProcessing();
 								break;
@@ -134,7 +139,7 @@ const std::list< std::vector<std::string> > &  FilterDataRecords::filter( CSVUti
 						}
 
 						if( any_filters_is_matching ) {
-							results.push_back( *it );
+							results.push_back( record );
 						}
 					}
 					break;
