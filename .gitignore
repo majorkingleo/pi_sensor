@@ -11,3 +11,12 @@ gmon.out
 tmp/
 perf_list.txt
 
+
+# website: source code lives in webapp/, www/ is a pure deploy target
+webapp/node_modules/
+webapp/dist/
+/www/*
+
+# reference project copied into the workspace for pattern extraction;
+# it has its own repository and must not be embedded in this one
+/PIDDojo/
