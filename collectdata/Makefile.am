@@ -73,8 +73,17 @@ test_csv_util_SOURCES= \
 	src_test/test_csv_util_main.cc \
 	src_test/test_csv_util.cc \
 	src_test/test_csv_util.h \
+	src_test/test_datarecord.cc \
+	src_test/test_datarecord.h \
+	src_test/test_filters.cc \
+	src_test/test_filters.h \
+	src_test/test_helpers.h \
 	src/csv_util.cc \
 	src/BufferedFile.cc \
+	src/DataRecord.cc \
+	src/FilterDataRecords.cc \
+	src/FilterDay.cc \
+	src/FilterString.cc \
 	src/colored_output.cc \
 	common/TestUtils.h
 
