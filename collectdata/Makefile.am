@@ -56,13 +56,11 @@ src_shared_libcore_a_SOURCES = \
 	src_shared/GenGnuPlotData.h \
 	src_shared/GenXDaysPlot.cc \
 	src_shared/GenXDaysPlot.h \
+	src_shared/ImportResume.cc \
+	src_shared/ImportResume.h \
 	src_shared/ImportRunner.cc \
 	src_shared/ImportRunner.h \
 	src_shared/ImportSink.h \
-	src_shared/ImportTail.cc \
-	src_shared/ImportTail.h \
-	src_shared/Measurement.cc \
-	src_shared/Measurement.h \
 	src_shared/OutDebug.cc \
 	src_shared/OutDebug.h \
 	src_shared/colored_output.cc \
@@ -192,6 +190,8 @@ test_csv_util_SOURCES = \
 	src_test/test_genplotdata.h \
 	src_test/test_file_option.cc \
 	src_test/test_file_option.h \
+	src_test/test_importresume.cc \
+	src_test/test_importresume.h \
 	src_test/test_helpers.h
 
 test_csv_util_LDADD = \

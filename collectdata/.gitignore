@@ -31,3 +31,6 @@ test_csv_util
 test-suite.log
 *.log
 *.trs
+
+# files written by the unit tests
+.test_*.csv

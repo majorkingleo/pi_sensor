@@ -10,6 +10,7 @@
 #include "test_colbuilder.h"
 #include "test_genplotdata.h"
 #include "test_file_option.h"
+#include "test_importresume.h"
 #include "colored_output.h"
 #include "ColBuilder.h"
 
@@ -74,6 +75,7 @@ int main( int argc, char **argv )
     test_cases.splice( test_cases.end(), test_case_colbuilder() );
     test_cases.splice( test_cases.end(), test_case_genplotdata() );
     test_cases.splice( test_cases.end(), test_case_file_option() );
+    test_cases.splice( test_cases.end(), test_case_importresume() );
 
     ColBuilder col;
     const int COL_IDX      = col.addCol( "IDX" );

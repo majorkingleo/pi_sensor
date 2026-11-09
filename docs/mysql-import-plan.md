@@ -105,19 +105,14 @@ CREATE TABLE measurements (
   hum_outside  DECIMAL(5,2)    NULL,
   KEY idx_measured_at (measured_at)
 );
-
-CREATE TABLE import_state (
-  name        VARCHAR(64)  NOT NULL PRIMARY KEY,
-  byte_offset BIGINT       NOT NULL,
-  file_size   BIGINT       NOT NULL,
-  mtime       DATETIME     NULL,
-  updated_at  DATETIME     NOT NULL
-);
 ```
 
 Do **not** put a `UNIQUE(measured_at)` key: timestamps are local time, and on
-DST fall-back the same wall-clock time occurs twice. The byte offset keeps the
-import exactly-once, so no unique key is needed.
+DST fall-back the same wall-clock time occurs twice. The importer searches the
+last already imported record instead, so no unique key is needed.
+
+There is **no `import_state` table** any more (an older version stored the read
+offset there; it can be dropped).
 
 ## 3. Importer (`import_temperatures`)
 
@@ -127,7 +122,7 @@ Repo layout (implemented):
 collectdata/src/            GUI application only (main.cc, main_window.*, FOX)
 collectdata/src_shared/     shared library src_shared/libcore.a
                             (csv_util, DataRecord, filters, plots, logging,
-                             BufferedFile, ImportTail/Measurement/ImportRunner)
+                             BufferedFile, ImportResume/ImportRunner)
 collectdata/src_importer/   importer: main.cc + DbImportSink.*
 collectdata/config/         settings: Configfile2 + sections (libconfig.a)
 ```
@@ -163,14 +158,19 @@ retry_db_timeout = 60
 [import]
 csv         = /srv/pi_sensor/staging/temperatures.csv
 table       = measurements
-state_table = import_state
 batch       = 500
 ```
 
 Command line options override the config file: `-H/-u/-p/-D`, `-t/--table`,
-`-s/--state-table`, `-n/--state-name`, `-f/--csv`, `-b/--batch`, `--offset`,
-`--dry-run`, `--create-tables`, `--reset`, `-v/--verbose`. If `password` is empty
-the environment variable `PI_SENSOR_DB_PASSWORD` is used.
+`-f/--csv`, `-b/--batch`, `--offset`, `--full`, `--dry-run`, `--create-tables`,
+`-v/--verbose`, `-d/--debug`. If `password` is empty the environment variable
+`PI_SENSOR_DB_PASSWORD` is used.
+
+Logging: the importer starts the async debug logger
+(`logInit()` / `LogSession` from `src_shared/logging.h`). Messages go to
+`[global] LogFile` (default `~/.pi_sensor.log`, rotated at 10 MB); `-d` mirrors
+the same stream to the console. Each run logs the config used, the newest
+database record, the chosen start offset and the import result.
 
 ### Use the lotr_analyzer database layer
 
@@ -193,26 +193,36 @@ e.g. `/etc/pi_sensor/import.ini`: see section 3 for the exact keys.
 DB credentials stay on the server (never on the Pi). Create a dedicated MySQL
 user with only `INSERT, UPDATE, SELECT` on `measurements` and `import_state`.
 
-### Import algorithm (byte offset, complete lines only)
+### Import algorithm (no stored state)
 
-1. Read `import_state.byte_offset` for `measurements` (0 on first run).
-2. Open the staging CSV and read from that offset. Reuse `BufferedFile`
-   (`collectdata/src/BufferedFile.h`) + `CSVUtil`/`DataRecord` for parsing.
-3. Consume only **complete** lines: remember the offset just after the last
-   `'\n'`; if the tail has no terminating newline, leave the offset at the last
-   complete line (the rest arrives next rsync).
-4. Parse each line with the existing `CSVUtil` (semicolon split, empty fields
-   suppressed) or `DataRecord`.
-5. Insert in batches (`Database::insert("measurements", DBRowList)`), inside a
-   transaction; `commit()` per batch.
-6. Update `import_state.byte_offset` (and `file_size`, `mtime`) in the **same**
-   transaction as the last batch, so a crash re-imports at most one batch.
-7. Exit 0 on success; on `--dry-run` parse and count but do not write.
+1. `SELECT MAX(measured_at) FROM measurements` - the newest record that is
+   already in the database (`db newest`).
+2. Open the staging CSV with `CSVUtil` and search **backwards**
+   (`CSVUtil::rbegin()` / `rend()`) for the last line whose timestamp is
+   `<= db newest`. Record its `getNextLinePos()` as the start offset.
+   - best case: that is the last line, one line is read;
+   - worst case (nothing matches, e.g. empty database): the file is scanned
+     once backwards and then imported once forwards.
+3. Import forward from that offset with `CSVUtil::iterator`, one `DataRecord`
+   per line (semicolon split, empty fields suppressed, same code path as the
+   GUI).
+4. Consume only **complete** lines: only up to `complete_file_size()`, i.e. the
+   last `'\n'`. A record still being written by rsync is left for the next run.
+5. Insert in batches of `batch` rows, one transaction (and `COMMIT`) per batch.
+   A crash therefore re-imports from the newest committed record on the next
+   run - no offset has to be repaired.
+6. `--dry-run` parses and counts without a database, `--full` ignores the
+   database content and imports the whole file, `--offset N` forces a start
+   offset (debugging).
 
-`--create-tables` should run the SQL above (analogous to lotr_analyzer's
-`create_sql` / `db/create.sql`). For the very first run (≈514k rows) a
-`LOAD DATA LOCAL INFILE` pre-load is a useful optimization; afterwards the
-incremental insert path takes over.
+`--create-tables` creates `measurements` (`CREATE TABLE IF NOT EXISTS`).
+For the very first run (≈514k rows) a `LOAD DATA LOCAL INFILE` pre-load is a
+useful optimization; afterwards the incremental insert path takes over.
+
+DST note: the timestamp of a record is taken from the CSV text
+(`DataRecord::getRawDateTimeStr()`), not converted through `time_t`. A
+`mktime`/`localtime` round trip shifts local wall clock times by an hour while
+DST is active.
 
 ### lotr_analyzer as a submodule
 
@@ -243,17 +253,29 @@ used.)
 
 ## 6. Tests (no database required)
 
-Split the importer into a testable core:
+The resumable core is `find_import_start()` / `complete_file_size()` in
+`src_shared/ImportResume.h`; the "newest record in the database" is just a
+string, so the tests need no MySQL.
 
-- `ImportState` (offset bookkeeping) and a `LineReader` that yields complete
-  lines from a `BufferedFile` starting at an offset.
-- Unit tests in `src_test/`:
-  - offset advances only past the last complete line (partial tail is kept);
-  - running the importer twice with the same file is a no-op the second time;
-  - a line appended later is picked up exactly once;
-  - empty line / empty fields follow `CSVUtil` semantics.
-- The DB sink is behind a small interface so tests use an in-memory fake sink;
-  a real MySQL integration test can be optional/tagged.
+Unit tests in `src_test/test_importresume.cc`:
+
+- empty database -> offset 0 (import everything);
+- newest record in the middle of the file -> offset after that line;
+- file already fully imported -> offset at end (no records);
+- trailing partial line (rsync still writing) is not imported, and the same
+timestamp found before it is used;
+- identical timestamps (DST fall-back) -> the **last** occurrence wins;
+- missing file -> -1.
+
+The DB sink is behind `ImportSink`, so tests / `--dry-run` use an in-memory
+sink; a real MySQL integration test can be optional/tagged.
+
+End-to-end check (manual, against a scratch table):
+
+```
+./import_temperatures -t measurements_test --create-tables -f test.csv   # 3 records
+./import_temperatures -t measurements_test -f test.csv                   # 0 records
+```
 
 ## 7. Implementation steps
 
@@ -269,15 +291,16 @@ Split the importer into a testable core:
    (settings), `tools/libtoolsdb.a` (database layer), `collectdata` (FOX GUI) and
    `import_temperatures` (`src_importer/main.cc` + `DbImportSink.cc`, links
    `libmariadb` via `mysql_config`).
-6. Implement offset + partial-line handling with unit tests (section 6).
+6. Resume search (`find_import_start`) + partial-line handling, with unit tests
+   (section 6).
 7. Server timer: run the importer after each rsync (or every few minutes).
 8. Build the website against `measurements`.
 
 ## Open questions
 
 - Should the raw Pi-local timestamp stay as-is, or be converted to UTC on import
-  (needs a TZ/DST policy)? The current plan stores local time and relies on the
-  byte offset for exactly-once import.
+  (needs a TZ/DST policy)? The current plan stores local time unchanged and
+  compares it as text, so DST does not shift values.
 - Keep one growing staging file, or rotate the Pi output to daily files (simpler
   per-file import bookkeeping)?
 - Final home for lotr_analyzer in this repo (submodule path) and whether the

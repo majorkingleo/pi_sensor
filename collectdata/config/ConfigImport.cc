@@ -15,12 +15,10 @@ ConfigSectionImport::ConfigSectionImport( const std::string & name_, Configfile2
 : Section( name_, config_file_ ),
   CsvFile( "csv", "/srv/pi_sensor/staging/temperatures.csv" ),
   Table( "table", "measurements" ),
-  StateTable( "state_table", "import_state" ),
   Batch( "batch", 500 )
 {
 	registerValue( &CsvFile );
 	registerValue( &Table );
-	registerValue( &StateTable );
 	registerValue( &Batch );
 }
 
