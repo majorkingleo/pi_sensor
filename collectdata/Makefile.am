@@ -48,6 +48,8 @@ src_shared_libcore_a_SOURCES = \
 	src_shared/BufferedFile.h \
 	src_shared/DataRecord.cc \
 	src_shared/DataRecord.h \
+	src_shared/FileBusy.cc \
+	src_shared/FileBusy.h \
 	src_shared/FilterDataRecords.cc \
 	src_shared/FilterDataRecords.h \
 	src_shared/FilterDay.cc \
@@ -204,6 +206,8 @@ test_csv_util_SOURCES = \
 	src_test/test_importresume.h \
 	src_test/test_importrunner.cc \
 	src_test/test_importrunner.h \
+	src_test/test_filebusy.cc \
+	src_test/test_filebusy.h \
 	src_test/test_helpers.h
 
 test_csv_util_LDADD = \

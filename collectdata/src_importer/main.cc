@@ -14,6 +14,7 @@
  */
 
 #include "DataRecord.h"
+#include "FileBusy.h"
 #include "ImportResume.h"
 #include "ImportRunner.h"
 #include "ImportSink.h"
@@ -197,6 +198,16 @@ int main( int argc, char ** argv )
     o_full.setRequired( false );
     arg.addOptionR( &o_full );
 
+    Arg::FlagOption o_no_wait( "no-wait" );
+    o_no_wait.setDescription( "do not wait for rsync to close the csv" );
+    o_no_wait.setRequired( false );
+    arg.addOptionR( &o_no_wait );
+
+    Arg::StringOption o_wait_timeout( "wait-timeout" );
+    o_wait_timeout.setDescription( "max seconds to wait for rsync (default: [database] retry_db_timeout, 60)" );
+    o_wait_timeout.setRequired( false );
+    arg.addOptionR( &o_wait_timeout );
+
     if( !arg.parse() || o_help.getState() ) {
         usage( argv[0] );
         std::cout << arg.getHelp( 5, 20, 30, 80 ) << std::endl;
@@ -230,6 +241,8 @@ int main( int argc, char ** argv )
         std::string table       = cfg_import.Table.value;
         std::string csv         = cfg_import.CsvFile.value;
         int         batch       = cfg_import.Batch.value;
+        // same timeout as for the database: 60 s by default
+        int         wait_timeout = cfg_db.retry_db_timeout.value;
         std::streamoff start_offset = -1;
 
         if( password.empty() && std::getenv( "PI_SENSOR_DB_PASSWORD" ) ) {
@@ -243,6 +256,9 @@ int main( int argc, char ** argv )
         if( o_table.isSet() )       table = *o_table.getValues()->begin();
         if( o_csv.isSet() )         csv = *o_csv.getValues()->begin();
         if( o_batch.isSet() )       batch = s2x<int>( *o_batch.getValues()->begin(), batch );
+        if( o_wait_timeout.isSet() ) {
+            wait_timeout = s2x<int>( *o_wait_timeout.getValues()->begin(), wait_timeout );
+        }
 
         if( o_verbose.getState() ) {
             std::cout << "config    : " << config_file << '\n'
@@ -250,15 +266,50 @@ int main( int argc, char ** argv )
                       << "mysql     : " << host << ' ' << user << " db=" << database << '\n'
                       << "table     : " << table << '\n'
                       << "csv       : " << csv << '\n'
-                      << "batch     : " << batch << std::endl;
+                      << "batch     : " << batch << '\n'
+                      << "wait      : " << wait_timeout << " s" << std::endl;
         }
 
         if( batch < 1 ) {
             batch = 1;
         }
 
+        if( wait_timeout <= 0 ) {
+            wait_timeout = 60;  // never wait forever
+        }
+
         if( csv.empty() ) {
             csv = argv[ argc - 1 ];
+        }
+
+        // rsync may still be writing the staging file: never read it while
+        // another process has it open
+        if( !o_no_wait.getState() ) {
+            std::vector<pid_t> holders = processes_using_file( csv );
+
+            if( !holders.empty() ) {
+                std::cout << "waiting   : " << csv << " is open by pid";
+
+                for( pid_t pid : holders ) {
+                    std::cout << ' ' << (long)pid;
+                }
+
+                std::cout << ", waiting " << wait_timeout << " s for it to be closed" << std::endl;
+
+                if( !wait_until_file_is_free( csv, 1000, wait_timeout, &holders ) ) {
+                    std::cerr << "still open by pid";
+
+                    for( pid_t pid : holders ) {
+                        std::cerr << ' ' << (long)pid;
+                    }
+
+                    std::cerr << ", aborting the import after " << wait_timeout << " s"
+                              << std::endl;
+                    return 5;
+                }
+
+                std::cout << "waiting   : done" << std::endl;
+            }
         }
 
         if( o_offset.isSet() ) {

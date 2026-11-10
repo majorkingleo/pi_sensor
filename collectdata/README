@@ -53,7 +53,8 @@ Directory layout
 
     src/            GUI only (main.cc, main_window.*, FOX)
     src_shared/     libcore.a, GUI and database independent (csv_util,
-                    DataRecord, filters, plots, logging, ImportRunner/ImportResume)
+                    DataRecord, filters, plots, logging, FileBusy,
+                    ImportRunner/ImportResume)
     src_importer/   import_temperatures (main.cc, DbImportSink.*)
     src_test/       unit tests (test_csv_util)
     config/         Configfile2 settings infrastructure (libconfig.a)

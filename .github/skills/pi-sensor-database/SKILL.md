@@ -62,8 +62,12 @@ flowchart LR
 ```
 
 ## The importer's contract with the DB
-
-1. `SELECT MAX(measured_at) FROM <table>` → newest stored record (`""` when the
+0. Before reading, wait until **no other process has the csv open**
+   (`FileBusy.h`: `/proc/<pid>/fd` scan, compared by device/inode). rsync holds
+   the file while it writes. The wait is limited by `[database]
+   retry_db_timeout` (default 60 s, same timeout as the database;
+   `--wait-timeout N` overrides, `--no-wait` skips the check); on timeout the
+   import is aborted with exit code 5.1. `SELECT MAX(measured_at) FROM <table>` → newest stored record (`""` when the
    table is empty or missing).
 2. `find_import_start()` searches the CSV backwards for that record
    (`CSVUtil::rbegin()`), resumes after it.
