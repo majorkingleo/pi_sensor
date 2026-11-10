@@ -34,3 +34,4 @@ test-suite.log
 
 # files written by the unit tests
 .test_*.csv
+.test_*.lock

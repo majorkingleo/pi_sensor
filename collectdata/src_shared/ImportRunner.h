@@ -31,6 +31,7 @@ struct ImportResult
     std::size_t    days          = 0;
     std::streamoff start_offset  = 0;
     std::streamoff end_offset    = 0;
+    bool           file_changed  = false;   // modified while we were reading it
     bool           ok            = true;
 };
 

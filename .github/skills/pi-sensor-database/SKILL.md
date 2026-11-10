@@ -67,7 +67,13 @@ flowchart LR
    the file while it writes. The wait is limited by `[database]
    retry_db_timeout` (default 60 s, same timeout as the database;
    `--wait-timeout N` overrides, `--no-wait` skips the check); on timeout the
-   import is aborted with exit code 5.1. `SELECT MAX(measured_at) FROM <table>` → newest stored record (`""` when the
+   import is aborted with exit code 5.
+   - `flock()` on `[import] lock_file` (default `/tmp/pi_sensor_import.lock`)
+     keeps two importers apart (exit 5 after the same timeout). rsync ignores
+     advisory locks, so a lock on the csv itself does not protect against it.
+   - while reading, dev/inode/size/mtime of the file are compared before/after;
+     an in-place modification aborts the run with exit code 6. A file replaced
+     by rename is a consistent snapshot and is fine.1. `SELECT MAX(measured_at) FROM <table>` → newest stored record (`""` when the
    table is empty or missing).
 2. `find_import_start()` searches the CSV backwards for that record
    (`CSVUtil::rbegin()`), resumes after it.
@@ -135,6 +141,9 @@ batch = 500
 ```
 
 Create a dedicated MySQL user with only `SELECT, INSERT` on `measurements`.
+
+Path values may start with `~/` (`ConfigSectionImport::read()` expands them);
+a missing or unreadable csv is logged and exits with code 3.
 
 Test instance: `192.168.1.200`, user/db `bleihuetten` (reachable from inside the
 network, not publicly). Use `-t measurements_test` + `--create-tables` for

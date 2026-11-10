@@ -2,6 +2,7 @@
 #include "ImportRunner.h"
 
 #include "DataRecord.h"
+#include "FileBusy.h"
 #include "ImportResume.h"
 #include "csv_util.h"
 
@@ -102,6 +103,9 @@ ImportResult ImportRunner::run( std::streamoff start_offset )
     // everything up to the last complete line ('\n') may be imported
     const std::streamoff end = complete_file_size( m_file );
 
+    // rsync may write in place while we read: remember the state of the file
+    const FileState state_before = file_state( m_file );
+
     std::vector<DataRecord> day;
     std::string current_day;
 
@@ -147,6 +151,11 @@ ImportResult ImportRunner::run( std::streamoff start_offset )
     if( !flush_day( day, result ) ) {
         result.ok = false;
         return result;
+    }
+
+    if( file_was_modified( state_before, file_state( m_file ) ) ) {
+        result.file_changed = true;
+        result.ok = false;
     }
 
     result.end_offset = end > start_offset ? end : start_offset;

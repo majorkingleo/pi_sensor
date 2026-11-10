@@ -176,6 +176,11 @@ Command line options override the config file: `-H/-u/-p/-D`, `-t/--table`,
 `--no-wait`, `--wait-timeout SECONDS`, `-v/--verbose`, `-d/--debug`. If
 `password` is empty the environment variable `PI_SENSOR_DB_PASSWORD` is used.
 
+Path values (`csv`, `lock_file`, `LogFile`) may start with `~/`: the home
+directory of the user running the importer is substituted
+(`ConfigSectionImport::read()`). A missing or unreadable csv is written to the
+log **and** stderr and exits with code 3 - it never silently imports 0 rows.
+
 Logging: the importer starts the async debug logger
 (`logInit()` / `LogSession` from `src_shared/logging.h`). Messages go to
 `[global] LogFile` (default `~/.pi_sensor.log`, rotated at 10 MB); `-d` mirrors
@@ -213,6 +218,25 @@ The wait is limited by `[database] retry_db_timeout` (default **60 s**, the same
 timeout as for the database; `--wait-timeout N` overrides it, `--no-wait`
 disables the check). When the timeout is reached the import is **aborted** with
 exit code 5. Only processes of the same user (or root) are visible in `/proc`.
+
+Two more safeguards (`src_shared/FileBusy.h`):
+
+- **Advisory lock against parallel imports**: `flock()` on `[import] lock_file`
+  (default `/tmp/pi_sensor_import.lock`). Two importers (cron + systemd timer,
+  or two hosts) would serialize on the same rows and can deadlock; the second
+  one waits (same 60 s limit) and then aborts with exit code 5. rsync does
+  **not** take part in advisory locks, so locking the csv itself would not stop
+  it - that is what the `/proc` check above is for.
+- **Change detection while reading**: device/inode/size/mtime (including
+  nanoseconds) are compared before and after the read. If the file was modified
+  in place (inode unchanged, mtime changed or shrunk) the import is aborted with
+  exit code 6 and the next run continues - nothing half written is imported. A
+  file replaced by `rename()` (rsync without `--inplace`) is a consistent
+  snapshot and does not abort.
+
+Exit codes: `0` ok, `2` missing settings, `3` database/file access,
+`4` import failed, `5` file still open or another import running (wait timeout),
+`6` file changed while reading.
 1. `SELECT MAX(measured_at) FROM measurements` - the newest record that is
    already in the database (`db newest`).
 2. Open the staging CSV with `CSVUtil` and search **backwards**
