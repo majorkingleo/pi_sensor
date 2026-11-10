@@ -52,6 +52,15 @@ const PALETTES: Record<'light' | 'dark', Palette> = {
   },
 };
 
+/** One data point under the mouse cursor. */
+export interface CursorPoint {
+  /** Index inside the loaded data set. */
+  index: number;
+  /** Unix timestamp (seconds) of the point. */
+  t: number;
+  values: Partial<Record<Field, number | null>>;
+}
+
 /** Line colour of a measure column, for the chart and the HTML legend. */
 export function seriesColor(field: Field, dark: boolean): string {
   return PALETTES[dark ? 'dark' : 'light'][field];
@@ -108,6 +117,9 @@ function formatTick(seconds: number, increment: number, wideSpan: boolean, span:
 }
 
 export class TimeSeriesChart {
+  /** Called with the point under the cursor, or null when the cursor leaves. */
+  onCursorChange: ((point: CursorPoint | null) => void) | null = null;
+
   private plot: uPlot | null = null;
   private fields: Field[] = [];
   private xs: number[] = [];
@@ -115,6 +127,8 @@ export class TimeSeriesChart {
   private dark = true;
   private bucket: Bucket = '1h';
   private bounds: { min: number; max: number } | null = null;
+  /** Last hovered index, kept so a rebuild or refresh can restore the readout. */
+  private lastCursorIndex: number | null = null;
   private readonly observer: ResizeObserver;
 
   constructor(private readonly host: HTMLElement) {
@@ -150,6 +164,10 @@ export class TimeSeriesChart {
     const bounds =
       first === undefined || last === undefined ? null : { min: first, max: last };
 
+    // An index is only meaningful within the same data set: a new preset makes
+    // it point at a completely different timestamp.
+    const preserveCursor = !structureChanged && this.lastCursorIndex !== null;
+
     const plot = this.plot;
 
     // Ask about the zoom *before* this.bounds is replaced by the new window.
@@ -163,6 +181,7 @@ export class TimeSeriesChart {
     this.xs = xs;
     this.columns = columns;
     this.bounds = bounds;
+    if (!preserveCursor) this.lastCursorIndex = null;
 
     if (structureChanged || !plot) {
       this.build(false);
@@ -173,6 +192,9 @@ export class TimeSeriesChart {
     if (previousScale && previousScale.max > previousScale.min) {
       plot.setScale('x', previousScale);
     }
+
+    // Keep the readout on the same point across a periodic refresh.
+    this.restoreCursor();
   }
 
   /** Switch between the light and the dark palette (rebuilds the plot). */
@@ -200,6 +222,29 @@ export class TimeSeriesChart {
 
   private alignedData(): uPlot.AlignedData {
     return [this.xs, ...this.columns];
+  }
+
+  /** Read one point out of the loaded data set. */
+  private pointAt(index: number): CursorPoint | null {
+    const t = this.xs[index];
+    if (t === undefined) return null;
+
+    const values: Partial<Record<Field, number | null>> = {};
+    this.fields.forEach((field, columnIndex) => {
+      values[field] = this.columns[columnIndex]?.[index] ?? null;
+    });
+
+    return { index, t, values };
+  }
+
+  private setCursorIndex(index: number | null): void {
+    this.lastCursorIndex = index;
+    this.onCursorChange?.(index === null ? null : this.pointAt(index));
+  }
+
+  /** Re-emit the readout for the remembered index (after a rebuild/refresh). */
+  private restoreCursor(): void {
+    this.setCursorIndex(this.lastCursorIndex);
   }
 
   private build(keepScale: boolean): void {
@@ -293,6 +338,20 @@ export class TimeSeriesChart {
       width: Math.max(160, this.host.clientWidth),
       height: Math.max(200, this.host.clientHeight),
       legend: { show: false },
+      hooks: {
+        // uPlot re-evaluates the hovered index on every cursor move; `idx` is
+        // null once the pointer leaves the plot area.
+        setCursor: [
+          (u) => {
+            // Only a hovered index is taken over. uPlot reports "nothing hovered"
+            // for reasons that are not a mouse movement (a rebuild, a redraw
+            // after setData), and that must not wipe the readout - leaving the
+            // chart is handled by the mouseleave listener instead.
+            const index = u.cursor.idx;
+            if (typeof index === 'number') this.setCursorIndex(index);
+          },
+        ],
+      },
       scales: {
         x: { time: true },
         temp: { auto: true },
@@ -309,6 +368,8 @@ export class TimeSeriesChart {
     const plot = new uPlot(options, this.alignedData(), this.host);
     this.plot = plot;
     this.attachInteractions(plot);
+    // Restore the readout for the point that was hovered before the rebuild.
+    this.restoreCursor();
 
     // Keep the current window when only the theme changed.
     if (previousScale && previousScale.max > previousScale.min) {
@@ -328,7 +389,13 @@ export class TimeSeriesChart {
     // Wheel zoom: uPlot has drag-zoom built in but no wheel support.
     u.over.addEventListener('wheel', this.onWheel, { passive: false });
     u.over.addEventListener('dblclick', this.onDoubleClick);
+    // `u.root` also covers the axes, so moving along an axis keeps the readout.
+    u.root.addEventListener('mouseleave', this.onPointerLeave);
   }
+
+  private readonly onPointerLeave = (): void => {
+    this.setCursorIndex(null);
+  };
 
   private readonly onWheel = (event: WheelEvent): void => {
     const u = this.plot;

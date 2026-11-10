@@ -7,6 +7,7 @@
 import './style.css';
 
 import { ApiError, fetchCurrent, fetchSeries, fetchStats, fetchYears } from './api';
+import type { CursorPoint } from './chart';
 import { seriesColor, TimeSeriesChart } from './chart';
 import { defaultPreset, PRESETS, presetForId, resolveRange, yearPreset } from './presets';
 import { ThemeController } from './theme';
@@ -169,6 +170,43 @@ function renderLegendItems(host: HTMLElement, fields: readonly Field[], dark: bo
   }
 }
 
+/**
+ * Readout of the point under the mouse cursor, shown right below the legend.
+ *
+ * With no point under the cursor it keeps a hint instead of collapsing, so the
+ * panel does not jump while the pointer moves across the plot.
+ */
+function renderCursorReadout(
+  host: HTMLElement,
+  point: CursorPoint | null,
+  fields: readonly Field[],
+  dark: boolean,
+): void {
+  host.replaceChildren();
+
+  if (!point) {
+    host.append(element('span', 'muted', 'Zeiger über das Diagramm bewegen, um die Werte zu sehen'));
+    return;
+  }
+
+  host.append(element('span', 'cursor-time', `${formatEpoch(point.t)} Uhr`));
+
+  for (const field of fields) {
+    const meta = fieldMeta(field);
+
+    const item = element('span', 'cursor-item');
+    const dot = element('span', 'card-dot');
+    dot.style.background = seriesColor(field, dark);
+
+    item.append(
+      dot,
+      document.createTextNode(meta.label),
+      element('strong', 'cursor-value', `${formatValue(point.values[field] ?? null, meta.decimals)} ${meta.unit}`),
+    );
+    host.append(item);
+  }
+}
+
 function renderPresetButtons(host: HTMLElement, active: Preset, onSelect: (preset: Preset) => void): void {
   host.replaceChildren();
 
@@ -295,6 +333,8 @@ class Dashboard {
   private currentYear = new Date().getFullYear();
   /** Panels the user folded away (persisted). */
   private readonly collapsed = loadCollapsed();
+  /** Point under the chart cursor, kept so a theme switch can re-render it. */
+  private cursorPoint: CursorPoint | null = null;
 
   private readonly ui = {
     status: byId<HTMLSpanElement>('status'),
@@ -305,6 +345,7 @@ class Dashboard {
     cards: byId<HTMLDivElement>('cards-current'),
     stats: byId<HTMLDivElement>('stats-24h'),
     legend: byId<HTMLDivElement>('chart-legend'),
+    cursor: byId<HTMLParagraphElement>('chart-cursor'),
     presets: byId<HTMLDivElement>('presets'),
     yearSelect: byId<HTMLSelectElement>('year-select'),
     chartHost: byId<HTMLDivElement>('chart'),
@@ -313,6 +354,10 @@ class Dashboard {
 
   constructor() {
     this.chart = new TimeSeriesChart(this.ui.chartHost);
+    this.chart.onCursorChange = (point) => {
+      this.cursorPoint = point;
+      this.renderCursor();
+    };
 
     this.theme.onChange((dark) => {
       this.chart.setTheme(dark);
@@ -361,6 +406,7 @@ class Dashboard {
 
   async start(): Promise<void> {
     this.renderPresets();
+    this.renderCursor();
     await this.loadYears();
     await this.reload();
     this.timer = window.setInterval(() => {
@@ -423,8 +469,10 @@ class Dashboard {
     }
 
     this.preset = preset;
+    this.cursorPoint = null;
     storePreset(preset.id);
     this.renderPresets();
+    this.renderCursor();
     void this.loadSeries(false).catch((error: unknown) => this.showError(error));
   }
 
@@ -456,6 +504,10 @@ class Dashboard {
     renderLegendItems(this.ui.legend, this.preset.fields, this.theme.isDark());
   }
 
+  private renderCursor(): void {
+    renderCursorReadout(this.ui.cursor, this.cursorPoint, this.preset.fields, this.theme.isDark());
+  }
+
   private applyThemeUi(dark: boolean): void {
     const mode = this.theme.getMode();
     const icon: Record<ThemeMode, string> = { light: '☀', dark: '☾', auto: '◐' };
@@ -467,6 +519,7 @@ class Dashboard {
     this.ui.btnTheme.textContent = icon[mode];
     this.ui.btnTheme.title = `${label[mode]} (klicken zum Wechseln)`;
     this.renderLegend();
+    this.renderCursor();
     // Re-render the cards and the statistics so their dots follow the theme.
     if (this.lastCurrent) renderCurrent(this.ui.cards, this.ui.currentTime, this.lastCurrent, dark);
     if (this.lastStats) renderStats(this.ui.stats, this.lastStats, dark);

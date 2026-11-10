@@ -388,6 +388,36 @@ body {
   outline-offset: 2px;
 }
 
+/* -- cursor readout (values of the hovered point) -------------------------- */
+
+.cursor-readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  min-height: 19px;
+  margin: -6px 0 10px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cursor-time {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.cursor-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.cursor-value {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* -- chart ----------------------------------------------------------------- */
 
 .legend {
