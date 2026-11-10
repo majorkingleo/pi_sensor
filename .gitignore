@@ -16,7 +16,4 @@ perf_list.txt
 webapp/node_modules/
 webapp/dist/
 /www/*
-
-# reference project copied into the workspace for pattern extraction;
-# it has its own repository and must not be embedded in this one
-/PIDDojo/
+deploy.sh
