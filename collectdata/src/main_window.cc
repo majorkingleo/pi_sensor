@@ -22,6 +22,9 @@
 
 using namespace Tools;
 
+// FOX timers are given in nanoseconds
+static const FXTime MILLISECOND = 1000000;
+
 FXDEFMAP(MainWindow) MainWindowMap[]={
 		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_CLOCK_TIMER,MainWindow::onClockTimeout),
 		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_DATA_TIMER,MainWindow::onDataTimeout),
@@ -203,16 +206,16 @@ void MainWindow::create()
    // Reset timer for next time
    getApp()->addTimeout(this,ID_CLOCK_TIMER,0);
    getApp()->addTimeout(this,ID_DATA_TIMER,0);
-   getApp()->addTimeout(this,ID_MINMAX_DATA_TIMER,1000);
+   getApp()->addTimeout(this,ID_MINMAX_DATA_TIMER,1000*MILLISECOND);
 
    loadIfExists( IMAGE_FILE_LAST24_HOURS, imageview_last24hours);
-   getApp()->addTimeout(this,ID_LAST24_HOUR_TIMER,2000);
+   getApp()->addTimeout(this,ID_LAST24_HOUR_TIMER,2000*MILLISECOND);
 
 
    if( loadIfExists( IMAGE_FILE_LAST14_DAYS, imageview_last14days) ) {
-	   getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,20000);
+	   getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,20000*MILLISECOND);
    } else {
-	   getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,2500);
+	   getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,2500*MILLISECOND);
    }
 
    FXMainWindow::create();
@@ -232,7 +235,7 @@ long MainWindow::onClockTimeout(FXObject*,FXSelector,void*)
 	clock->setText( acBuffer );
 
 	// Reset timer for next time
-	getApp()->addTimeout(this,ID_CLOCK_TIMER,1000);
+	getApp()->addTimeout(this,ID_CLOCK_TIMER,1000*MILLISECOND);
 	return 1;
 }
 
@@ -302,7 +305,7 @@ long MainWindow::onDataTimeout(FXObject*,FXSelector,void*)
 
 
 	// Reset timer for next time
-	getApp()->addTimeout(this,ID_DATA_TIMER,5000);
+	getApp()->addTimeout(this,ID_DATA_TIMER,5000*MILLISECOND);
 	return 1;
 }
 
@@ -421,7 +424,7 @@ long MainWindow::onMinMaxDataTimeout(FXObject*,FXSelector,void*)
 	}
 
 	// Reset timer for next time
-	getApp()->addTimeout(this,ID_MINMAX_DATA_TIMER,1000*5*60);
+	getApp()->addTimeout(this,ID_MINMAX_DATA_TIMER,1000*5*60*MILLISECOND);
 	return 1;
 }
 
@@ -440,50 +443,50 @@ bool MainWindow::loadImage(const FXString& file, FXImageView *imageview)
 	FXString ext=FXPath::extension(file);
 	FXImage *img=NULL;
 	FXImage *old;
-	if(comparecase(ext,"gif")==0){
+	if(FXString::comparecase(ext,"gif")==0){
 		img=new FXGIFImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
 	}
-	else if(comparecase(ext,"bmp")==0){
+	else if(FXString::comparecase(ext,"bmp")==0){
 		img=new FXBMPImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
 	}
-	else if(comparecase(ext,"xpm")==0){
+	else if(FXString::comparecase(ext,"xpm")==0){
 		img=new FXXPMImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
 	}
-	else if(comparecase(ext,"pcx")==0){
+	else if(FXString::comparecase(ext,"pcx")==0){
 		img=new FXPCXImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
 	}
-	else if(comparecase(ext,"ico")==0 || comparecase(ext,"cur")==0){
+	else if(FXString::comparecase(ext,"ico")==0 || FXString::comparecase(ext,"cur")==0){
 		img=new FXICOImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
 	}
-	else if(comparecase(ext,"tga")==0){
+	else if(FXString::comparecase(ext,"tga")==0){
 		img=new FXTGAImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
 	}
-	else if(comparecase(ext,"rgb")==0){
+	else if(FXString::comparecase(ext,"rgb")==0){
 		img=new FXRGBImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
 	}
-	else if(comparecase(ext,"xbm")==0){
+	else if(FXString::comparecase(ext,"xbm")==0){
 		img=new FXXBMImage(getApp(),NULL,NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
 	}
-	else if(comparecase(ext,"ppm")==0){
+	else if(FXString::comparecase(ext,"ppm")==0){
 		img=new FXPPMImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
 	}
-	else if(comparecase(ext,"iff")==0 || comparecase(ext,"lbm")==0){
+	else if(FXString::comparecase(ext,"iff")==0 || FXString::comparecase(ext,"lbm")==0){
 		img=new FXIFFImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
 	}
-	else if(comparecase(ext,"ras")==0){
+	else if(FXString::comparecase(ext,"ras")==0){
 		img=new FXRASImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
 	}
-	else if(comparecase(ext,"png")==0){
+	else if(FXString::comparecase(ext,"png")==0){
 		img=new FXPNGImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
 	}
-	else if(comparecase(ext,"jpg")==0){
+	else if(FXString::comparecase(ext,"jpg")==0){
 		img=new FXJPGImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
 	}
 
 	// Perhaps failed
 	if(img==NULL){
 		FXMessageBox::error(this,MBOX_OK,"Error Loading Image","Unsupported type: %s",ext.text());
-		return FALSE;
+		return false;
 	}
 
 	// Load it
@@ -511,7 +514,7 @@ bool MainWindow::loadImage(const FXString& file, FXImageView *imageview)
 		delete old;
 		getApp()->endWaitCursor();
 	}
-	return TRUE;
+	return true;
 }
 
 
@@ -588,7 +591,7 @@ long MainWindow::onLast24HourTimeout(FXObject*,FXSelector,void*)
 	loadImage( IMAGE_FILE_LAST24_HOURS.c_str(), imageview_last24hours);
 
 	// Reset timer for next time
-	getApp()->addTimeout(this,ID_LAST24_HOUR_TIMER,1000*5*60);
+	getApp()->addTimeout(this,ID_LAST24_HOUR_TIMER,1000*5*60*MILLISECOND);
 	return 1;
 }
 
@@ -671,7 +674,7 @@ long MainWindow::onLast14DaysTimeout(FXObject*,FXSelector,void*)
 	loadImage(IMAGE_FILE_LAST14_DAYS.c_str(),imageview_last14days);
 
 	// Reset timer for next time
-	getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,1000*60*60);
+	getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,1000*60*60*MILLISECOND);
 	return 1;
 }
 

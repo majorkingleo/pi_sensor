@@ -17,12 +17,25 @@ Building
 
 Produced binaries:
 
-* `collectdata`          - GUI application, needs the FOX toolkit (1.6 or 1.7)
+* `collectdata`          - GUI application, needs the FOX toolkit 2.0 (X11 or
+                          Wayland). The FOX installation is found with
+                          pkg-config (`fox-2.0`) or, when pkg-config does not
+                          know the prefix, with `fox-config`. The library
+                          directory is built into the binary as an rpath.
 * `import_temperatures`  - MySQL importer, needs `mysql_config`
 
 `./reconfigure.sh --without-fox` builds only `import_temperatures` (no X11
 libraries needed); `--without-mysql` builds only the GUI. Without FOX the GUI
-target is skipped automatically (configure prints a warning).
+target is skipped automatically (configure prints a warning). `--with-fox2`
+forces FOX 2.0; the older `--with-fox16`/`--with-fox17` options are still
+accepted.
+
+A FOX 2.0 installed below `/usr/local` puts its `pkg-config` file into
+`/usr/local/lib64/pkgconfig` on some distributions, which is not searched by
+default. Either export it or let configure use `fox-config`:
+
+    export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:$PKG_CONFIG_PATH
+    ./reconfigure.sh
 
 
 Docker

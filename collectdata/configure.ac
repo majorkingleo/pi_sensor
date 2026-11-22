@@ -49,6 +49,12 @@ AC_ARG_WITH([fox17],
   [with_fox17=no]
 )
 
+AC_ARG_WITH([fox2],
+  [AS_HELP_STRING([--with-fox2],[use FOX-Toolkit 2.0])],
+  [],
+  [with_fox2=no]
+)
+
 AS_IF([test "x$with_fox16" != "xno"],
     [PKG_CHECK_MODULES([LIBFOX], [fox16],[FOX16="yes"],[FOX16="no"])]
 )
@@ -57,24 +63,57 @@ AS_IF([test "x$with_fox17" != "xno"],
     [PKG_CHECK_MODULES([LIBFOX], [fox17],[FOX17="yes"],[FOX17="no"])]
 )
 
+AS_IF([test "x$with_fox2" != "xno"],
+    [PKG_CHECK_MODULES([LIBFOX], [fox-2.0],[FOX2="yes"],[FOX2="no"])]
+)
+
 dnl FOX is optional: the MySQL importer and the tests do not need it, so a
 dnl server build can run without any X11 libraries.
 have_fox=no
 
 AS_IF([test "x$with_fox" != "xno"],
-    [AS_IF([test "x${FOX16}" = "xyes" || test "x${FOX17}" = "xyes"],
+    [AS_IF([test "x${FOX16}" = "xyes" || test "x${FOX17}" = "xyes" || test "x${FOX2}" = "xyes"],
         [have_fox=yes],
-        [PKG_CHECK_MODULES([LIBFOX], [fox],
-            [have_fox=yes],
-            [PKG_CHECK_MODULES([LIBFOX], [fox17],
+        [PKG_CHECK_MODULES([LIBFOX], [fox-2.0],
+            [have_fox=yes; FOX2="yes"],
+            [PKG_CHECK_MODULES([LIBFOX], [fox],
                 [have_fox=yes],
-                [PKG_CHECK_MODULES([LIBFOX], [fox16],
+                [PKG_CHECK_MODULES([LIBFOX], [fox17],
                     [have_fox=yes],
-                    [have_fox=no])]
+                    [PKG_CHECK_MODULES([LIBFOX], [fox16],
+                        [have_fox=yes],
+                        [have_fox=no])]
+                )]
             )]
         )]
     )]
 )
+
+dnl FOX 2 installs into /usr/local by default, which is neither in the
+dnl pkg-config search path nor in the linker search path of the runtime
+dnl loader. Fall back to fox-config and keep the library directory in the
+dnl binary.
+AS_IF([test "x$have_fox" != "xyes" && test "x$with_fox" != "xno"],
+    [AC_PATH_PROG([FOX_CONFIG], [fox-config], [no])
+     AS_IF([test "x$FOX_CONFIG" != "xno"],
+         [LIBFOX_CFLAGS=`$FOX_CONFIG --cflags`
+          LIBFOX_LIBS=`$FOX_CONFIG --libs`
+          have_fox=yes])]
+)
+
+fox_libdir=
+AS_IF([test "x$have_fox" = "xyes"],
+    [AS_IF([test "x$FOX2" = "xyes"],
+        [fox_libdir=`$PKG_CONFIG --variable=libdir fox-2.0`])
+     AS_IF([test -z "$fox_libdir"],
+        [AC_PATH_PROG([FOX_CONFIG], [fox-config], [no])
+         AS_IF([test "x$FOX_CONFIG" != "xno"],
+             [fox_libdir=`$FOX_CONFIG --libs | tr ' ' '\n' | sed -n 's/^-L//p' | head -1`])])
+     AS_IF([test -n "$fox_libdir"],
+        [AC_MSG_NOTICE([FOX library directory: $fox_libdir])
+         FOX_RPATH="-Wl,-rpath,$fox_libdir"])]
+)
+AC_SUBST([FOX_RPATH])
 
 AS_IF([test "x$have_fox" = "xyes"],
     [AC_MSG_NOTICE([FOX found - building the collectdata GUI])],

@@ -153,7 +153,7 @@ collectdata_LDADD = \
 	cpputils/cpputilsshared/cpputilsformat/libcpputilsformat.a \
 	$(LIBFOX_LIBS)
 
-collectdata_LDFLAGS = -pthread
+collectdata_LDFLAGS = -pthread $(FOX_RPATH)
 endif
 
 ###
