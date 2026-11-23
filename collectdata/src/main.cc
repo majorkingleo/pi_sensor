@@ -418,8 +418,8 @@ int main( int argc, char **argv )
 
   {
 	  // Make application
+	  // Colors and font come from the desktop theme
 	  FXApp application("CollectData","pi_sensor");
-	  application.setNormalFont( new FXFont(&application,"helvetica,140") );
 
 	  // Open display; this reads registry
 	  application.init(argc,argv);

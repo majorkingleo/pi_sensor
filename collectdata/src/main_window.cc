@@ -5,7 +5,6 @@
  *      Author: martin
  */
 #include "main_window.h"
-#include "theme.h"
 #include <time.h>
 #include "csv_util.h"
 #include <iostream>
@@ -71,7 +70,7 @@ MainWindow::MainWindow(FXApp *a)
 	tabbook=new FXTabBook(contents,this,ID_PANEL,PACK_UNIFORM_WIDTH|PACK_UNIFORM_HEIGHT|LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_RIGHT);
 
 	// First item is a list
-	tab1=new ThemeTabItem(tabbook,"&Current Data",NULL);
+	tab1=new FXTabItem(tabbook,"&Current Data",NULL);
 
 	contents_currentdata = new FXVerticalFrame(tabbook,FRAME_RAISED);
 /*
@@ -87,8 +86,8 @@ MainWindow::MainWindow(FXApp *a)
 	{
 		FXHorizontalFrame *f = new FXHorizontalFrame(contents_currentdata);
 
-		new ThemeLabel( f, "Current date and time:" );
-		clock = new ThemeLabel( f, "00:00" );
+		new FXLabel( f, "Current date and time:" );
+		clock = new FXLabel( f, "00:00" );
 	}
 
 	new FXHorizontalSeparator(contents_currentdata,LAYOUT_SIDE_TOP|LAYOUT_FILL_X|SEPARATOR_GROOVE);
@@ -96,8 +95,8 @@ MainWindow::MainWindow(FXApp *a)
 	{
 		FXHorizontalFrame *f = new FXHorizontalFrame(contents_currentdata);
 
-		new ThemeLabel( f, "Dataset date and time:" );
-		dataset_date_and_time = new ThemeLabel( f, "00:00" );
+		new FXLabel( f, "Dataset date and time:" );
+		dataset_date_and_time = new FXLabel( f, "00:00" );
 	}
 
 	new FXHorizontalSeparator(contents_currentdata,LAYOUT_SIDE_TOP|LAYOUT_FILL_X|SEPARATOR_GROOVE);
@@ -119,7 +118,7 @@ MainWindow::MainWindow(FXApp *a)
 
 
 	// First item is a list
-	tab2=new ThemeTabItem(tabbook,"&Min/Max last 24h",NULL);
+	tab2=new FXTabItem(tabbook,"&Min/Max last 24h",NULL);
 
 	contents_min_max = new FXVerticalFrame(tabbook,FRAME_RAISED);
 
@@ -152,14 +151,14 @@ MainWindow::MainWindow(FXApp *a)
 
 
 	// First item is a list
-	tab3=new ThemeTabItem(tabbook,"&Temp last 24h",NULL);
+	tab3=new FXTabItem(tabbook,"&Temp last 24h",NULL);
 	contents_temp_last24 = new FXVerticalFrame(tabbook,FRAME_RAISED);
 
 	FXComposite *fdata_temp_last24 = new FXHorizontalFrame(contents_temp_last24, LAYOUT_FILL_Y|LAYOUT_FILL_X);
 	imageview_last24hours=new FXImageView(fdata_temp_last24,NULL,NULL,0,LAYOUT_FILL_X|LAYOUT_FILL_Y);
 
 
-	tab3=new ThemeTabItem(tabbook,"&Temp last 14d",NULL);
+	tab3=new FXTabItem(tabbook,"&Temp last 14d",NULL);
 	contents_temp_last14days = new FXVerticalFrame(tabbook,FRAME_RAISED);
 
 	FXComposite *fdata_temp_last14days = new FXHorizontalFrame(contents_temp_last14days, LAYOUT_FILL_Y|LAYOUT_FILL_X);
@@ -201,7 +200,9 @@ MainWindow::~MainWindow()
 // Show up
 void MainWindow::create()
 {
-   init_theme(getApp());
+   // The colors and the font come from the desktop theme; a palette set here
+   // would reach the widgets only after they were constructed, so the widgets
+   // keep the desktop colors while the themed painting would use the palette.
 
    // Reset timer for next time
    getApp()->addTimeout(this,ID_CLOCK_TIMER,0);

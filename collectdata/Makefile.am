@@ -103,15 +103,6 @@ cpputils_cpputilsshared_cpputilsformat_libcpputilsformat_a_SOURCES = \
 	cpputils/cpputilsshared/cpputilsformat/format2.cc \
 	cpputils/cpputilsshared/cpputilsformat/cformat.cc
 
-# the FOX theme widgets are needed by the GUI only, keep them out of libtools.a
-# so that tools/libtools.a can be linked by the importer (no FOX, no X11)
-if HAVE_FOX
-noinst_LIBRARIES += tools/libtheme.a
-
-tools_libtheme_a_SOURCES = tools/theme.cpp tools/theme.h
-tools_libtheme_a_CPPFLAGS = $(AM_CPPFLAGS) $(LIBFOX_CFLAGS)
-endif
-
 if HAVE_MYSQL
 # settings infrastructure (Configfile2), shared by importer and later tools
 config_libconfig_a_SOURCES = \
@@ -146,7 +137,6 @@ collectdata_SOURCES = \
 collectdata_CPPFLAGS = $(AM_CPPFLAGS) $(LIBFOX_CFLAGS)
 
 collectdata_LDADD = \
-	tools/libtheme.a \
 	src_shared/libcore.a \
 	tools/libtools.a \
 	cpputils/cpputilsshared/libcpputilsshared.a \
