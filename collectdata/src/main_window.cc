@@ -13,16 +13,124 @@
 #include <debug.h>
 #include <FilterDataRecords.h>
 #include <FilterDay.h>
-#include "FXPNGImage.h"
-#include "FXJPGImage.h"
-#include "Gen24HoursPlot.h"
-#include "GenXDaysPlot.h"
-#include "cppdir.h"
+#include "FilterDateRange.h"
 
 using namespace Tools;
 
 // FOX timers are given in nanoseconds
 static const FXTime MILLISECOND = 1000000;
+
+namespace
+{
+	// the colors of the two temperature curves
+	const FXColor COLOR_OUTSIDE = FXRGB( 220, 50, 47 );
+	const FXColor COLOR_INSIDE  = FXRGB( 38, 139, 210 );
+
+	std::string formatDateTime( time_t timestamp )
+	{
+		struct tm tmp;
+
+		if( localtime_r( &timestamp, &tmp ) == nullptr ) {
+			return std::string();
+		}
+
+		char buffer[100];
+		strftime( buffer, sizeof(buffer), "%a %d.%m. %H:%M", &tmp );
+
+		return buffer;
+	}
+
+	// start (00:00:00) of the month that contains when, shifted by add_months
+	time_t firstOfMonth( time_t when, int add_months )
+	{
+		struct tm tmp;
+
+		if( localtime_r( &when, &tmp ) == nullptr ) {
+			return when;
+		}
+
+		tmp.tm_mday = 1;
+		tmp.tm_hour = 0;
+		tmp.tm_min = 0;
+		tmp.tm_sec = 0;
+		tmp.tm_mon += add_months;
+		tmp.tm_isdst = -1;
+
+		time_t start = mktime( &tmp );
+
+		return start == (time_t)-1 ? when : start;
+	}
+
+	// start (01.01. 00:00:00) of the year that contains when
+	time_t firstOfYear( time_t when )
+	{
+		struct tm tmp;
+
+		if( localtime_r( &when, &tmp ) == nullptr ) {
+			return when;
+		}
+
+		tmp.tm_mday = 1;
+		tmp.tm_mon = 0;
+		tmp.tm_hour = 0;
+		tmp.tm_min = 0;
+		tmp.tm_sec = 0;
+		tmp.tm_isdst = -1;
+
+		time_t start = mktime( &tmp );
+
+		return start == (time_t)-1 ? when : start;
+	}
+
+	/**
+	 * Feed the charts. The x values are the age of the records in seconds
+	 * relative to start_at, expressed in seconds_per_unit units, so the axis
+	 * numbers stay small. The real date and time is shown by the cursor
+	 * overlay and in the caption.
+	 */
+	void fillPlot( PlotView * plot, const std::list<DataRecord> & entries, time_t start_at,
+				   double seconds_per_unit, const std::string & unit, const std::string & title )
+	{
+		PlotSeries outside;
+		outside.label = "Outside";
+		outside.color = COLOR_OUTSIDE;
+
+		PlotSeries inside;
+		inside.label = "Inside";
+		inside.color = COLOR_INSIDE;
+
+		time_t last = start_at;
+
+		for( const DataRecord & rec : entries )
+		{
+			if( rec.timestamp < start_at ) {
+				continue;
+			}
+
+			double x = static_cast<double>( rec.timestamp - start_at ) / seconds_per_unit;
+
+			outside.x.push_back( x );
+			outside.y.push_back( rec.degrees_outside );
+
+			inside.x.push_back( x );
+			inside.y.push_back( rec.degrees_inside );
+
+			last = std::max( last, rec.timestamp );
+		}
+
+		std::string caption = title;
+
+		if( !outside.x.empty() ) {
+			caption += "\n" + formatDateTime( start_at ) + " - " + formatDateTime( last );
+		} else {
+			caption += "\nno data";
+		}
+
+		plot->setTimeBase( start_at, seconds_per_unit, unit );
+		plot->setCaption( caption.c_str() );
+		plot->setSeries( { outside, inside } );
+	}
+}
 
 FXDEFMAP(MainWindow) MainWindowMap[]={
 		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_CLOCK_TIMER,MainWindow::onClockTimeout),
@@ -30,6 +138,9 @@ FXDEFMAP(MainWindow) MainWindowMap[]={
 		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_MINMAX_DATA_TIMER,MainWindow::onMinMaxDataTimeout),
 		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_LAST24_HOUR_TIMER,MainWindow::onLast24HourTimeout),
 		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_LAST14_DAYS_TIMER,MainWindow::onLast14DaysTimeout),
+		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_LAST_MONTH_TIMER,MainWindow::onLastMonthTimeout),
+		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_CURRENT_MONTH_TIMER,MainWindow::onCurrentMonthTimeout),
+		FXMAPFUNC(SEL_TIMEOUT,MainWindow::ID_CURRENT_YEAR_TIMER,MainWindow::onCurrentYearTimeout),
 };
 
 FXIMPLEMENT( MainWindow, FXMainWindow, MainWindowMap, ARRAYNUMBER( MainWindowMap));
@@ -41,9 +152,7 @@ MainWindow::MainWindow(FXApp *a)
 	humidity_inside(0),
 	degree_outside(0),
 	humidity_outside(0),
-	lastDataRecord(0),
-	IMAGE_FILE_LAST24_HOURS("dataLast24Hours.png"),
-	IMAGE_FILE_LAST14_DAYS("dataLast14Days.png")
+	lastDataRecord(0)
 {
 	// Tooltip
 	new FXToolTip(getApp());
@@ -152,17 +261,35 @@ MainWindow::MainWindow(FXApp *a)
 
 	// First item is a list
 	tab3=new FXTabItem(tabbook,"&Temp last 24h",NULL);
-	contents_temp_last24 = new FXVerticalFrame(tabbook,FRAME_RAISED);
+	contents_temp_last24 = new FXVerticalFrame(tabbook,FRAME_RAISED|LAYOUT_FILL_X|LAYOUT_FILL_Y);
 
-	FXComposite *fdata_temp_last24 = new FXHorizontalFrame(contents_temp_last24, LAYOUT_FILL_Y|LAYOUT_FILL_X);
-	imageview_last24hours=new FXImageView(fdata_temp_last24,NULL,NULL,0,LAYOUT_FILL_X|LAYOUT_FILL_Y);
+	plot_last24hours = new PlotView(contents_temp_last24, CAPTION_ABOVE|CAPTION_SHOWN|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+	new FXLabel(contents_temp_last24,"Drag a rectangle to zoom, double click to reset the zoom",NULL,LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X|JUSTIFY_CENTER_X);
 
 
 	tab3=new FXTabItem(tabbook,"&Temp last 14d",NULL);
-	contents_temp_last14days = new FXVerticalFrame(tabbook,FRAME_RAISED);
+	contents_temp_last14days = new FXVerticalFrame(tabbook,FRAME_RAISED|LAYOUT_FILL_X|LAYOUT_FILL_Y);
 
-	FXComposite *fdata_temp_last14days = new FXHorizontalFrame(contents_temp_last14days, LAYOUT_FILL_Y|LAYOUT_FILL_X);
-	imageview_last14days=new FXImageView(fdata_temp_last14days,NULL,NULL,0,LAYOUT_FILL_X|LAYOUT_FILL_Y);
+	plot_last14days = new PlotView(contents_temp_last14days, CAPTION_ABOVE|CAPTION_SHOWN|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+	new FXLabel(contents_temp_last14days,"Drag a rectangle to zoom, double click to reset the zoom",NULL,LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X|JUSTIFY_CENTER_X);
+
+	tab3=new FXTabItem(tabbook,"Temp last &month",NULL);
+	contents_temp_lastmonth = new FXVerticalFrame(tabbook,FRAME_RAISED|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+
+	plot_lastmonth = new PlotView(contents_temp_lastmonth, CAPTION_ABOVE|CAPTION_SHOWN|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+	new FXLabel(contents_temp_lastmonth,"Drag a rectangle to zoom, double click to reset the zoom",NULL,LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X|JUSTIFY_CENTER_X);
+
+	tab3=new FXTabItem(tabbook,"Temp this m&onth",NULL);
+	contents_temp_currentmonth = new FXVerticalFrame(tabbook,FRAME_RAISED|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+
+	plot_currentmonth = new PlotView(contents_temp_currentmonth, CAPTION_ABOVE|CAPTION_SHOWN|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+	new FXLabel(contents_temp_currentmonth,"Drag a rectangle to zoom, double click to reset the zoom",NULL,LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X|JUSTIFY_CENTER_X);
+
+	tab3=new FXTabItem(tabbook,"Temp this &year",NULL);
+	contents_temp_currentyear = new FXVerticalFrame(tabbook,FRAME_RAISED|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+
+	plot_currentyear = new PlotView(contents_temp_currentyear, CAPTION_ABOVE|CAPTION_SHOWN|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+	new FXLabel(contents_temp_currentyear,"Drag a rectangle to zoom, double click to reset the zoom",NULL,LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X|JUSTIFY_CENTER_X);
 }
 
 void MainWindow::createDataFields( FXComposite *fdata, const char *title, FXDataTarget *degree_target,  FXDataTarget *humidity_target )
@@ -209,15 +336,12 @@ void MainWindow::create()
    getApp()->addTimeout(this,ID_DATA_TIMER,0);
    getApp()->addTimeout(this,ID_MINMAX_DATA_TIMER,1000*MILLISECOND);
 
-   loadIfExists( IMAGE_FILE_LAST24_HOURS, imageview_last24hours);
-   getApp()->addTimeout(this,ID_LAST24_HOUR_TIMER,2000*MILLISECOND);
-
-
-   if( loadIfExists( IMAGE_FILE_LAST14_DAYS, imageview_last14days) ) {
-	   getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,20000*MILLISECOND);
-   } else {
-	   getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,2500*MILLISECOND);
-   }
+   // the charts are filled from the data file, no pre-rendered images any more
+   getApp()->addTimeout(this,ID_LAST24_HOUR_TIMER,0);
+   getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,1000*MILLISECOND);
+   getApp()->addTimeout(this,ID_LAST_MONTH_TIMER,1500*MILLISECOND);
+   getApp()->addTimeout(this,ID_CURRENT_MONTH_TIMER,2000*MILLISECOND);
+   getApp()->addTimeout(this,ID_CURRENT_YEAR_TIMER,2500*MILLISECOND);
 
    FXMainWindow::create();
 
@@ -439,105 +563,22 @@ void MainWindow::max( FXint & value, float & rec_value )
 	value = std::max( value, static_cast<FXint>(rec_value) );
 }
 
-bool MainWindow::loadImage(const FXString& file, FXImageView *imageview)
-{
-	FXString ext=FXPath::extension(file);
-	FXImage *img=NULL;
-	FXImage *old;
-	if(FXString::comparecase(ext,"gif")==0){
-		img=new FXGIFImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
-	}
-	else if(FXString::comparecase(ext,"bmp")==0){
-		img=new FXBMPImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
-	}
-	else if(FXString::comparecase(ext,"xpm")==0){
-		img=new FXXPMImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
-	}
-	else if(FXString::comparecase(ext,"pcx")==0){
-		img=new FXPCXImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
-	}
-	else if(FXString::comparecase(ext,"ico")==0 || FXString::comparecase(ext,"cur")==0){
-		img=new FXICOImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
-	}
-	else if(FXString::comparecase(ext,"tga")==0){
-		img=new FXTGAImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
-	}
-	else if(FXString::comparecase(ext,"rgb")==0){
-		img=new FXRGBImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
-	}
-	else if(FXString::comparecase(ext,"xbm")==0){
-		img=new FXXBMImage(getApp(),NULL,NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
-	}
-	else if(FXString::comparecase(ext,"ppm")==0){
-		img=new FXPPMImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
-	}
-	else if(FXString::comparecase(ext,"iff")==0 || FXString::comparecase(ext,"lbm")==0){
-		img=new FXIFFImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
-	}
-	else if(FXString::comparecase(ext,"ras")==0){
-		img=new FXRASImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
-	}
-	else if(FXString::comparecase(ext,"png")==0){
-		img=new FXPNGImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
-	}
-	else if(FXString::comparecase(ext,"jpg")==0){
-		img=new FXJPGImage(getApp(),NULL,IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP);
-	}
-
-	// Perhaps failed
-	if(img==NULL){
-		FXMessageBox::error(this,MBOX_OK,"Error Loading Image","Unsupported type: %s",ext.text());
-		return false;
-	}
-
-	// Load it
-	FXFileStream stream;
-	if(stream.open(file,FXStreamLoad)){
-		getApp()->beginWaitCursor();
-		img->loadPixels(stream);
-		stream.close();
-
-		//img->gradient(FXRGB(255,0,0),FXRGB(0,255,0),FXRGB(0,0,255),FXRGB(255,255,255));
-		//img->gradient(FXRGB(255,0,0),FXRGB(255,255,0),FXRGB(0,0,255),FXRGB(255,0,255));
-		//img->hgradient(FXRGB(255,0,0),FXRGB(0,0,255));
-		//img->vgradient(FXRGB(255,0,0),FXRGB(0,0,255));
-		//img->fill(FXRGB(255,0,0));
-		//img->fade(FXRGB(255,255,255),128);
-		//img->blend(getApp()->getBaseColor());
-		//img->blend(FXRGB(255,128,255));
-		//img->xshear(-30*256,FXRGB(0,255,128));
-		//img->yshear(-50*256,FXRGB(0,255,128));
-
-
-		img->create();
-		old=imageview->getImage();
-		imageview->setImage(img);
-		delete old;
-		getApp()->endWaitCursor();
-	}
-	return true;
-}
-
-
-long MainWindow::onLast24HourTimeout(FXObject*,FXSelector,void*)
+void MainWindow::loadPlotRange( PlotView * plot, time_t start_at, time_t end_at,
+								double seconds_per_unit, const std::string & unit,
+								const std::string & title )
 {
 	CSVUtil csv_util( DATA_FILE_NAME );
 
 	if( !csv_util ) {
-		std::cerr << "cannot open file " << "temperatures.csv" << std::endl;
+		std::cerr << "cannot open file " << DATA_FILE_NAME << std::endl;
 	}
-
-	time_t start_at = time(0)-24*60*60;
 
 	FilterDataRecords data_filter;
 	data_filter.setSeekdir(FilterDataRecords::SEEKDIR_BACKWARDS);
-	data_filter.setStrategy(FilterDataRecords::STRATEGY_ANY_FILTERS_IS_MATCHING);
-	data_filter.addFilter( new FilterDay( start_at) );
-	data_filter.addFilter( new FilterDay( time(0) ) );
+	data_filter.setStrategy(FilterDataRecords::STRATEGY_ALL_FILTERS_ARE_MATCHING);
+	data_filter.addFilter( new FilterDateRange( start_at, end_at ) );
 
 	auto res = data_filter.filter(csv_util);
-
-	int count = 0;
 
 	std::list<DataRecord> entries;
 
@@ -548,148 +589,64 @@ long MainWindow::onLast24HourTimeout(FXObject*,FXSelector,void*)
 
 	entries.sort(DataRecord::sort_by_time_asc());
 
-	count = 0;
+	fillPlot( plot, entries, start_at, seconds_per_unit, unit, title );
+}
 
-	auto it_begin_with_time = entries.end();
+long MainWindow::onLast24HourTimeout(FXObject*,FXSelector,void*)
+{
+	time_t now = time(0);
 
-	for( auto it = entries.begin(); it != entries.end(); it++ )
-	{
-		auto & rec = *it;
-
-		if( rec.timestamp < start_at ) {
-			continue;
-		}
-
-		if( it_begin_with_time == entries.end() ) {
-			it_begin_with_time = it;
-		}
-	}
-
-	Gen24HoursPlot gen;
-
-	const char * dataFile = "dataLast24Hours";
-
-	gen.setImageFileName( IMAGE_FILE_LAST24_HOURS );
-	gen.setDataFileName( dataFile );
-	gen.setTitle( "Temperatures Last 24 Hours");
-
-	std::vector<std::string> data_outside;
-	std::vector<std::string> data_inside;
-	std::vector<std::string> time_stamps;
-
-	for( auto it = it_begin_with_time; it != entries.end(); it++ )
-	{
-		data_outside.push_back( x2s(it->degrees_outside) );
-		data_inside.push_back( x2s(it->degrees_inside) );
-		time_stamps.push_back( it->getDateTimeStr( it->timestamp ) );
-	}
-
-	gen.addData( "Outside", data_outside );
-	gen.addData( "Inside", data_inside );
-	gen.setXDescriptionValues( time_stamps );
-	gen.create();
-
-	loadImage( IMAGE_FILE_LAST24_HOURS.c_str(), imageview_last24hours);
+	loadPlotRange( plot_last24hours, now-24*60*60, now, 60*60.0, "hours", "Temperatures Last 24 Hours" );
 
 	// Reset timer for next time
 	getApp()->addTimeout(this,ID_LAST24_HOUR_TIMER,1000*5*60*MILLISECOND);
 	return 1;
 }
 
-
-
 long MainWindow::onLast14DaysTimeout(FXObject*,FXSelector,void*)
 {
-	CSVUtil csv_util( DATA_FILE_NAME );
-
-	if( !csv_util ) {
-		std::cerr << "cannot open file " << "temperatures.csv" << std::endl;
-	}
-
-	time_t start_at = time(0)-24*60*60*14;
 	time_t now = time(0);
 
-	FilterDataRecords data_filter;
-	data_filter.setSeekdir(FilterDataRecords::SEEKDIR_BACKWARDS);
-	data_filter.setStrategy(FilterDataRecords::STRATEGY_ANY_FILTERS_IS_MATCHING);
-
-	for( time_t x = start_at; x < now; x += 24*60*60 )
-	{
-		data_filter.addFilter( new FilterDay( x ) );
-	}
-
-	auto res = data_filter.filter(csv_util);
-
-	int count = 0;
-
-	std::list<DataRecord> entries;
-
-	for( auto csv_line : res )
-	{
-		entries.push_back( DataRecord( csv_line ) );
-	}
-
-	entries.sort(DataRecord::sort_by_time_asc());
-
-	count = 0;
-
-	auto it_begin_with_time = entries.end();
-
-	for( auto it = entries.begin(); it != entries.end(); it++ )
-	{
-		auto & rec = *it;
-
-		if( rec.timestamp < start_at ) {
-			continue;
-		}
-
-		if( it_begin_with_time == entries.end() ) {
-			it_begin_with_time = it;
-		}
-	}
-
-	GenXDaysPlot gen;
-
-	const char * dataFile = "dataLast14Days";
-
-	gen.setImageFileName( IMAGE_FILE_LAST14_DAYS );
-	gen.setDataFileName( dataFile );
-	gen.setTitle( "Temperatures Last 14 Days");
-
-	std::vector<std::string> data_outside;
-	std::vector<std::string> data_inside;
-	std::vector<std::string> time_stamps;
-
-	for( auto it = it_begin_with_time; it != entries.end(); it++ )
-	{
-		data_outside.push_back( x2s(it->degrees_outside) );
-		data_inside.push_back( x2s(it->degrees_inside) );
-		time_stamps.push_back( it->getDateTimeStr( it->timestamp ) );
-	}
-
-	gen.addData( "Outside", data_outside );
-	gen.addData( "Inside", data_inside );
-	gen.setXDescriptionValues( time_stamps );
-	gen.create();
-
-	loadImage(IMAGE_FILE_LAST14_DAYS.c_str(),imageview_last14days);
+	loadPlotRange( plot_last14days, now-14*24*60*60, now, 24*60*60.0, "days", "Temperatures Last 14 Days" );
 
 	// Reset timer for next time
 	getApp()->addTimeout(this,ID_LAST14_DAYS_TIMER,1000*60*60*MILLISECOND);
 	return 1;
 }
 
-bool MainWindow::loadIfExists( const std::string & file, FXImageView *imageview )
+long MainWindow::onLastMonthTimeout(FXObject*,FXSelector,void*)
 {
-	CppDir::File f( file.c_str() );
+	time_t now = time(0);
 
-	if( f.is_valid() ) {
-		return loadImage(file.c_str(),imageview);
-	}
+	// the last complete calendar month
+	time_t start_at = firstOfMonth( now, -1 );
+	time_t end_at = firstOfMonth( now, 0 ) - 1;
 
-	return false;
+	loadPlotRange( plot_lastmonth, start_at, end_at, 24*60*60.0, "days", "Temperatures Last Month" );
+
+	// Reset timer for next time
+	getApp()->addTimeout(this,ID_LAST_MONTH_TIMER,1000*60*60*MILLISECOND);
+	return 1;
 }
 
+long MainWindow::onCurrentMonthTimeout(FXObject*,FXSelector,void*)
+{
+	time_t now = time(0);
 
+	loadPlotRange( plot_currentmonth, firstOfMonth( now, 0 ), now, 24*60*60.0, "days", "Temperatures This Month" );
 
+	// Reset timer for next time
+	getApp()->addTimeout(this,ID_CURRENT_MONTH_TIMER,1000*60*15*MILLISECOND);
+	return 1;
+}
 
+long MainWindow::onCurrentYearTimeout(FXObject*,FXSelector,void*)
+{
+	time_t now = time(0);
+
+	loadPlotRange( plot_currentyear, firstOfYear( now ), now, 24*60*60.0, "days", "Temperatures This Year" );
+
+	// Reset timer for next time
+	getApp()->addTimeout(this,ID_CURRENT_YEAR_TIMER,1000*60*60*MILLISECOND);
+	return 1;
+}

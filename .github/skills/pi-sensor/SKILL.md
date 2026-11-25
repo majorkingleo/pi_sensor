@@ -52,7 +52,9 @@ YYYY-MM-DD;HH:MM:SS;temp_inside;humidity_inside;temp_outside;humidity_outside
   - `-h/--help`, `-v/--version`, `-d/--debug`
   - required positional CSV file path
   - `-l/--last N`, `-a/--all`, `-ra/--reverse-all`, `-f/--filter STR`, `--today`, `--last24`, `--gnuplot`
-- **Default behavior with no print option: launch the FOX GUI** (`MainWindow`).
+  - `--header` (modifier): print the CSV header line `Date;Time;temp_inside;humidity_inside;temp_outside;humidity_outside` (from `DataRecord::CSV_HEADER`) before the records of any print mode
+  - The positional CSV path must come **before** the options: `./collectdata temperatures.csv --today --header`
+- **Default behavior with no print option: launch the FOX GUI** (`MainWindow`). The chart tabs (last 24 h, last 14 days, last calendar month, current month, current year) are interactive charts drawn with the FOX 2.0 chart widgets (`src/plot_view.*` → `FX2DPlot`/`FXCurve`/`FXData`), not with gnuplot images. The date ranges are read with `FilterDateRange` (`src_shared/FilterDateRange.*`), which compares the `FIELD_DATE` string so a backwards scan stops at the start of the range.
 - Key classes: `CSVUtil` (streaming CSV iterator/reverse-iterator), `DataRecord` (row model + parsing), `FilterDataRecords` / `FilterString` / `FilterDay` (filter chain), `GenGnuPlotData` → `Gen24HoursPlot`, `GenXDaysPlot` (write a gnuplot config + `.dat` and shell out via `system("gnuplot ...")`).
 
 ### GPS clock sync (`sync_clock/`)
@@ -92,10 +94,10 @@ make
 ### Add a CSV field
 1. Python: extend the `csv_line` format string and the `getCSV()` output.
 2. C++: add the field to `DataRecord::Record` (before `MAX_FIELDS`), parse it in `DataRecord::parse()`, initialize it in the constructor, and emit it in `DataRecord::toString()`.
-3. Update the gnuplot generators if the new field should be charted.
+3. Update `DataRecord::CSV_HEADER` (`--header` output) and, if the new field should be charted, the gnuplot generators (`Gen24HoursPlot`/`GenXDaysPlot`) resp. `PlotView`/`fillPlot()` for the GUI charts.
 
 ### Regenerate the charts
-Run `./collectdata --last24 --gnuplot temperatures.csv` (writes `dataLast24Hours.in`, `.dat`, `.png`). `gnuplot` must be on PATH; the generators invoke it via `system()`.
+The GUI charts need nothing extra, they are drawn by the FOX chart widgets. The old gnuplot files are only produced on demand: `./collectdata --last24 --gnuplot temperatures.csv` (writes `dataLast24Hours.in`, `.dat`, `.png`); `gnuplot` must be on PATH for that, the generators invoke it via `system()`.
 
 ### Deploy as a service
 Copy `etc/system.d/pi_sensor.service` to `/etc/systemd/system/`, then `systemctl enable pigpiod && systemctl start pigpiod && systemctl start pi_sensor`.

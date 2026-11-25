@@ -52,6 +52,8 @@ src_shared_libcore_a_SOURCES = \
 	src_shared/FileBusy.h \
 	src_shared/FilterDataRecords.cc \
 	src_shared/FilterDataRecords.h \
+	src_shared/FilterDateRange.cc \
+	src_shared/FilterDateRange.h \
 	src_shared/FilterDay.cc \
 	src_shared/FilterDay.h \
 	src_shared/FilterString.cc \
@@ -132,7 +134,9 @@ if HAVE_FOX
 collectdata_SOURCES = \
 	src/main.cc \
 	src/main_window.cc \
-	src/main_window.h
+	src/main_window.h \
+	src/plot_view.cc \
+	src/plot_view.h
 
 collectdata_CPPFLAGS = $(AM_CPPFLAGS) $(LIBFOX_CFLAGS)
 

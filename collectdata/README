@@ -22,6 +22,15 @@ Produced binaries:
                           pkg-config (`fox-2.0`) or, when pkg-config does not
                           know the prefix, with `fox-config`. The library
                           directory is built into the binary as an rpath.
+                          The temperature curves are drawn with the FOX chart
+                          widget (`FX2DPlot`), so no external plotting tool is
+                          needed. There is one tab per range: last 24 hours,
+                          last 14 days, last calendar month, current month and
+                          current year. The charts are interactive: drag a
+                          rectangle to zoom, double click to reset the zoom,
+                          and move the mouse over the chart to read the date,
+                          time and values at the cursor. `-gnuplot` still
+                          generates the old gnuplot files on the command line.
 * `import_temperatures`  - MySQL importer, needs `mysql_config`
 
 `./reconfigure.sh --without-fox` builds only `import_temperatures` (no X11
@@ -64,7 +73,7 @@ the calling uid/gid.
 Directory layout
 ----------------
 
-    src/            GUI only (main.cc, main_window.*, FOX)
+    src/            GUI only (main.cc, main_window.*, plot_view.*, FOX)
     src_shared/     libcore.a, GUI and database independent (csv_util,
                     DataRecord, filters, plots, logging, FileBusy,
                     ImportRunner/ImportResume)

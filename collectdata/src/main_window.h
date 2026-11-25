@@ -10,6 +10,7 @@
 
 #include <fx.h>
 #include <string>
+#include "plot_view.h"
 
 class MainWindow : public FXMainWindow
 {
@@ -58,10 +59,16 @@ protected:
 	FXVerticalFrame*   contents_min_max;
 	FXVerticalFrame*   contents_temp_last24;
 	FXVerticalFrame*   contents_temp_last14days;
+	FXVerticalFrame*   contents_temp_lastmonth;
+	FXVerticalFrame*   contents_temp_currentmonth;
+	FXVerticalFrame*   contents_temp_currentyear;
 	FXLabel*		   clock;
 	FXLabel*		   dataset_date_and_time;
-	FXImageView*	   imageview_last24hours;
-	FXImageView*	   imageview_last14days;
+	PlotView*		   plot_last24hours;
+	PlotView*		   plot_last14days;
+	PlotView*		   plot_lastmonth;
+	PlotView*		   plot_currentmonth;
+	PlotView*		   plot_currentyear;
 
 	FXDataTarget       degree_inside_target;
 	FXint	           degree_inside;
@@ -85,9 +92,6 @@ protected:
 
 	MinMax	   		   min_max[2][2];
 
-	std::string 	   IMAGE_FILE_LAST24_HOURS;
-	std::string 	   IMAGE_FILE_LAST14_DAYS;
-
 	MainWindow() {}
 
 public:
@@ -98,6 +102,9 @@ public:
 		ID_MINMAX_DATA_TIMER,
 		ID_LAST24_HOUR_TIMER,
 		ID_LAST14_DAYS_TIMER,
+		ID_LAST_MONTH_TIMER,
+		ID_CURRENT_MONTH_TIMER,
+		ID_CURRENT_YEAR_TIMER,
 	};
 
 public:
@@ -115,6 +122,9 @@ public:
 	long onMinMaxDataTimeout(FXObject*,FXSelector,void*);
 	long onLast24HourTimeout(FXObject*,FXSelector,void*);
 	long onLast14DaysTimeout(FXObject*,FXSelector,void*);
+	long onLastMonthTimeout(FXObject*,FXSelector,void*);
+	long onCurrentMonthTimeout(FXObject*,FXSelector,void*);
+	long onCurrentYearTimeout(FXObject*,FXSelector,void*);
 
 protected:
 	void createDataFields( FXComposite *fdata, const char *title, FXDataTarget *degree_target,  FXDataTarget *humidity_target );
@@ -125,8 +135,10 @@ protected:
 	void min( FXint & value, float & rec_value );
 	void max( FXint & value, float & rec_value );
 
-	bool loadImage(const FXString& file, FXImageView *imageview );
-	bool loadIfExists( const std::string & file, FXImageView *imageview );
+	/** read DATA_FILE_NAME, keep start_at..end_at and feed the plot */
+	void loadPlotRange( PlotView * plot, time_t start_at, time_t end_at,
+						double seconds_per_unit, const std::string & unit,
+						const std::string & title );
 };
 
 
