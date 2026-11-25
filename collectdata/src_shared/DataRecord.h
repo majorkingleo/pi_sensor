@@ -29,6 +29,11 @@ public:
 	static const std::string TIME_FORMAT;
 	static const std::string DATE_TIME_FORMAT;
 
+	// AI generated: the column names of the data file, in FIELD_* order
+	/** "Date;Time;temp_inside;humidity_inside;temp_outside;humidity_outside" */
+	static const std::string CSV_HEADER;
+	// End of AI generated
+
 
 	class sort_by_time_asc
 	{

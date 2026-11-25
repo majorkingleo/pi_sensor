@@ -56,7 +56,16 @@ std::ostream & operator<<( std::ostream & out, const std::vector<std::string> & 
 	return out;
 }
 
-void printAllRecords( const std::string & file )
+// AI generated: --header support
+void printCSVHeader( bool print_header )
+{
+	if( print_header ) {
+		std::cout << DataRecord::CSV_HEADER << std::endl;
+	}
+}
+// End of AI generated
+
+void printAllRecords( const std::string & file, bool print_header )
 {
 	CSVUtil csv_util( file );
 
@@ -65,6 +74,8 @@ void printAllRecords( const std::string & file )
 	}
 
 	std::vector<std::string> record = csv_util.getLastLine();
+
+	printCSVHeader( print_header );
 
 	int count = 0;
 
@@ -81,7 +92,7 @@ void printAllRecords( const std::string & file )
 	}
 }
 
-void printAllRecords( const std::string & file, const std::string & filter )
+void printAllRecords( const std::string & file, const std::string & filter, bool print_header )
 {
 	CSVUtil csv_util( file );
 
@@ -94,6 +105,8 @@ void printAllRecords( const std::string & file, const std::string & filter )
 
 	auto res = data_filter.filter(csv_util);
 
+	printCSVHeader( print_header );
+
 	int count = 0;
 	for( auto csv_line : res )
 	{
@@ -101,7 +114,7 @@ void printAllRecords( const std::string & file, const std::string & filter )
 	}
 }
 
-void printAllDateRecords( const std::string & file, time_t when )
+void printAllDateRecords( const std::string & file, time_t when, bool print_header )
 {
 	CSVUtil csv_util( file );
 
@@ -114,6 +127,8 @@ void printAllDateRecords( const std::string & file, time_t when )
 
 	auto res = data_filter.filter(csv_util);
 
+	printCSVHeader( print_header );
+
 	int count = 0;
 	for( auto csv_line : res )
 	{
@@ -122,13 +137,15 @@ void printAllDateRecords( const std::string & file, time_t when )
 }
 
 
-void printAllRecordsReverse( const std::string & file )
+void printAllRecordsReverse( const std::string & file, bool print_header )
 {
 	CSVUtil csv_util( file );
 
 	if( !csv_util ) {
 		throw STDERR_EXCEPTION( Tools::format( "Cannot open file %s ", file) );
 	}
+
+	printCSVHeader( print_header );
 
 	int count = 0;
 
@@ -145,7 +162,7 @@ void printAllRecordsReverse( const std::string & file )
 	}
 }
 
-void printAllLast24( const std::string & file, bool generate_gnuplot_data )
+void printAllLast24( const std::string & file, bool generate_gnuplot_data, bool print_header )
 {
 	CSVUtil csv_util( file );
 
@@ -175,6 +192,8 @@ void printAllLast24( const std::string & file, bool generate_gnuplot_data )
 	entries.sort(DataRecord::sort_by_time_asc());
 
 	time_t start_at = time(0)-24*60*60;
+
+	printCSVHeader( print_header );
 
 	count = 0;
 
@@ -320,6 +339,13 @@ int main( int argc, char **argv )
   o_gnuplot.setDescription("generate gnuplot graph");
   o_gnuplot.setRequired(false);
 
+  // AI generated: --header
+  Arg::FlagOption o_header("header");
+  oc_print_stuff.addOptionR(&o_header);
+  o_header.setDescription("also print the csv header line before the records");
+  o_header.setRequired(false);
+  // End of AI generated
+
   const unsigned int console_width = 80;
 
   if( !arg.parse() )
@@ -388,31 +414,31 @@ int main( int argc, char **argv )
 
   if( o_print_all.isSet() )
   {
-	  printAllRecords( data_file_name );
+	  printAllRecords( data_file_name, o_header.getState() );
 	  return 0;
   }
 
   if( o_print_rall.isSet() )
   {
-	  printAllRecordsReverse( data_file_name );
+	  printAllRecordsReverse( data_file_name, o_header.getState() );
 	  return 0;
   }
 
   if( o_print_filter.isSet() )
   {
-	  printAllRecords( data_file_name, *o_print_filter.getValues()->begin() );
+	  printAllRecords( data_file_name, *o_print_filter.getValues()->begin(), o_header.getState() );
 	  return 0;
   }
 
   if( o_print_today.isSet() )
   {
-	  printAllDateRecords( data_file_name, time(0) );
+	  printAllDateRecords( data_file_name, time(0), o_header.getState() );
 	  return 0;
   }
 
   if( o_print_last24.isSet() )
   {
-	  printAllLast24( data_file_name, o_gnuplot.isSet() );
+	  printAllLast24( data_file_name, o_gnuplot.isSet(), o_header.getState() );
 	  return 0;
   }
 

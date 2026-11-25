@@ -18,6 +18,7 @@ using namespace Tools;
 const std::string DataRecord::DATE_FORMAT = "%Y-%m-%d";
 const std::string DataRecord::TIME_FORMAT = "%H:%M:%S";
 const std::string DataRecord::DATE_TIME_FORMAT = DataRecord::DATE_FORMAT + " " + DataRecord::TIME_FORMAT;
+const std::string DataRecord::CSV_HEADER = "Date;Time;temp_inside;humidity_inside;temp_outside;humidity_outside";
 
 DataRecord::DataRecord( const std::vector<std::string> & rec )
 : timestamp(0),
