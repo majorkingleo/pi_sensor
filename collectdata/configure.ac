@@ -55,6 +55,35 @@ AC_ARG_WITH([fox2],
   [with_fox2=no]
 )
 
+dnl FOX installs into /usr/local by default, e.g. /usr/local/lib64/pkgconfig/
+dnl fox-2.0.pc and /usr/local/bin/fox-config. Neither /usr/local/lib64/pkgconfig
+dnl nor /usr/local/bin is necessarily part of the pkg-config/PATH search path
+dnl (Arch: pkg-config only looks at /usr/lib/pkgconfig:/usr/share/pkgconfig), so
+dnl add the usual /usr/local locations before looking for FOX. Otherwise
+dnl PKG_CHECK_MODULES reports "Package 'fox-2.0' not found" although FOX is
+dnl installed.
+PKG_PROG_PKG_CONFIG
+AS_IF([test -n "$PKG_CONFIG"],
+    [for pc_dir in /usr/local/lib64/pkgconfig /usr/local/lib/pkgconfig \
+                  /usr/local/share/pkgconfig \
+                  /usr/local/lib/x86_64-linux-gnu/pkgconfig
+     do
+         AS_IF([test -f "$pc_dir/fox-2.0.pc"],
+             [AS_CASE([":$PKG_CONFIG_PATH:"],
+                  [*":$pc_dir:"*], [],
+                  [AS_IF([test -n "$PKG_CONFIG_PATH"],
+                       [PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$pc_dir"],
+                       [PKG_CONFIG_PATH="$pc_dir"])])])
+     done
+     export PKG_CONFIG_PATH
+     AC_MSG_NOTICE([pkg-config search path: $PKG_CONFIG_PATH])])
+
+dnl fox-config is a second, pkg-config independent source of FOX flags.
+AC_PATH_PROG([FOX_CONFIG], [fox-config], [no])
+AS_IF([test "x$FOX_CONFIG" = "xno" && test -x /usr/local/bin/fox-config],
+    [FOX_CONFIG=/usr/local/bin/fox-config])
+AC_SUBST([FOX_CONFIG])
+
 AS_IF([test "x$with_fox16" != "xno"],
     [PKG_CHECK_MODULES([LIBFOX], [fox16],[FOX16="yes"],[FOX16="no"])]
 )
@@ -94,8 +123,7 @@ dnl pkg-config search path nor in the linker search path of the runtime
 dnl loader. Fall back to fox-config and keep the library directory in the
 dnl binary.
 AS_IF([test "x$have_fox" != "xyes" && test "x$with_fox" != "xno"],
-    [AC_PATH_PROG([FOX_CONFIG], [fox-config], [no])
-     AS_IF([test "x$FOX_CONFIG" != "xno"],
+    [AS_IF([test "x$FOX_CONFIG" != "xno"],
          [LIBFOX_CFLAGS=`$FOX_CONFIG --cflags`
           LIBFOX_LIBS=`$FOX_CONFIG --libs`
           have_fox=yes])]
@@ -105,10 +133,8 @@ fox_libdir=
 AS_IF([test "x$have_fox" = "xyes"],
     [AS_IF([test "x$FOX2" = "xyes"],
         [fox_libdir=`$PKG_CONFIG --variable=libdir fox-2.0`])
-     AS_IF([test -z "$fox_libdir"],
-        [AC_PATH_PROG([FOX_CONFIG], [fox-config], [no])
-         AS_IF([test "x$FOX_CONFIG" != "xno"],
-             [fox_libdir=`$FOX_CONFIG --libs | tr ' ' '\n' | sed -n 's/^-L//p' | head -1`])])
+     AS_IF([test -z "$fox_libdir" && test "x$FOX_CONFIG" != "xno"],
+        [fox_libdir=`$FOX_CONFIG --libs | tr ' ' '\n' | sed -n 's/^-L//p' | head -1`])
      AS_IF([test -n "$fox_libdir"],
         [AC_MSG_NOTICE([FOX library directory: $fox_libdir])
          FOX_RPATH="-Wl,-rpath,$fox_libdir"])]
@@ -117,7 +143,10 @@ AC_SUBST([FOX_RPATH])
 
 AS_IF([test "x$have_fox" = "xyes"],
     [AC_MSG_NOTICE([FOX found - building the collectdata GUI])],
-    [AC_MSG_WARN([FOX toolkit not found - only import_temperatures will be built])]
+    [AC_MSG_WARN([FOX toolkit not found - only import_temperatures will be built
+If FOX is installed in /usr/local, run
+  PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig ./configure
+or pass --with-fox2 / make /usr/local/bin/fox-config visible in PATH.])]
 )
 
 AM_CONDITIONAL([HAVE_FOX], [test "x$have_fox" = "xyes"])
